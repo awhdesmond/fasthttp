@@ -1,3 +1,5 @@
+#include <chrono>
+#include <ctime> 
 #include "http.h"
 #include "./vendor/picohttpparser.h"
 
@@ -31,4 +33,24 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req)
         }
     }
     return pr; // positive is num bytes used, -1 is error, -2 is incomplete
+}
+
+int httpMakeResponse(HttpResponse* res)
+{
+    res->statusCode = HTTP_STATUS_CODE_OK;
+    res->statusMsg = std::string(HTTP_STATUS_MSG_OK);
+    res->version = 1;
+    res->headers.insert(std::make_pair("Server", "HTTP Server"));
+
+    time_t rawtime;
+    struct tm *info;
+    time(&rawtime);
+    info = gmtime(&rawtime); // get GMT time
+    char timebuf[128];
+    strftime (timebuf, 128, "%a, %d %b %Y %H:%M:%S GMT", info);
+    res->headers.insert(std::make_pair("Date", std::string(timebuf)));
+
+    printf("%s \n", timebuf);
+
+    return 0;
 }
