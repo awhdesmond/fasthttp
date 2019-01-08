@@ -3,6 +3,14 @@
 #include "httpserver.h"
 
 
+class RootHandler : public RequestHandler {
+    public:
+        RootHandler() {}
+        virtual void operator() (HttpRequest* req, HttpResponse* res) {
+            printf("GET /");
+        }
+};
+
 int main(int argc, char* argv[])
 {
     // Process command line arguments
@@ -13,8 +21,10 @@ int main(int argc, char* argv[])
 
     int port = atoi(argv[2]);
 
-    HttpServer* server = new HttpServer(port);
+    HttpServer server = HttpServer(port);
+    
     // Register handler and routes here
+    server.registerHandler(GET, "/", new RootHandler());
 
-    server->start();
+    server.start();
 }

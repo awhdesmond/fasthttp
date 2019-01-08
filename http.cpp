@@ -11,12 +11,14 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req)
     struct phr_header headers[100];
     size_t method_len, path_len, num_headers;
     
+    printf("%s \n", reqBuf);
     int pr = phr_parse_request(reqBuf, buflen, &method, &method_len, &path, &path_len,
                                &minor_version, headers, &num_headers, 0);
+    printf("%d \n", pr);
 
     if (pr > 0) { // successfully parsed the request 
-        req->method = std::string(method);
-        req->path = std::string(path);
+        req->method = "req->method.append(method)";
+        req->path = std::string(path, (int)path_len);
         req->version = minor_version;
         int i;
         for (i = 0; i != num_headers; ++i) {
@@ -33,6 +35,9 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req)
                 (int)headers[i].value_len, headers[i].value);
         }
     }
+    printf("%s \n", std::string(method, (int)method_len).c_str());
+    printf("%d \n", req->version);
+    printf("%s \n", req->method.c_str());
     return pr; // positive is num bytes used, -1 is error, -2 is incomplete
 }
 
@@ -69,7 +74,7 @@ std::string httpSerialiseResponse(HttpResponse* res)
         result = result + it->first + ": " + it->second + HTTP_DELIMETER;
         it++;
     }
-    
+
     result = result + "Content-Length: " + std::to_string(res->body.length()) + HTTP_DELIMETER;
     result = result + HTTP_DELIMETER;
     result = result + res->body;

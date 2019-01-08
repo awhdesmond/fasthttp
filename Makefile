@@ -1,4 +1,4 @@
-CC = g++
+CC = c++ -std=c++11 -stdlib=libc++
 
 CFLAGS  = -c -Wall
 SOURCES = main.cpp httpserver.cpp tcpstream.cpp http.cpp ./vendor/picohttpparser.cpp

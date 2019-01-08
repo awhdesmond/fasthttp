@@ -19,44 +19,16 @@ int HttpServer::start()
     }
     HttpServer::initServerSocket();
     while (1) {
-        int conn = HttpServer::acceptConnection();
-
+        int conn = acceptConnection();
         printf("Connection on: %d\n", conn);
         TCPStream* stream = new TCPStream(conn);
-
-        char reqBuf[BUFFERSIZE];
-        memset(reqBuf, 0, BUFFERSIZE);
-        while (1) {
-            HttpRequest request;
-            HttpResponse response;
-
-            int numRead = stream->receive(reqBuf, BUFFERSIZE);
-            if (numRead == 0) {
-                printf("Connection closed by remote peer\n");
-                close(stream->_conn);
-                free(stream);  
-                break;  
-            }
-            printf("Received Message: %s\n", reqBuf);
-            int pr = httpParseRequest(reqBuf, BUFFERSIZE, &request); // Pray req is less than BUFFERSIZE
-            
-            // May have multiple HTTP requests due to HTTP/1.1 
-            // pipelining within a TCP packet
-            // TODO: optimize?
-            char tempReqBuf[BUFFERSIZE];
-            memset(tempReqBuf, 0, BUFFERSIZE);
-            memcpy(tempReqBuf, reqBuf + pr, BUFFERSIZE - pr);
-            memset(reqBuf, 0, BUFFERSIZE);
-            memcpy(reqBuf, tempReqBuf, BUFFERSIZE - pr);
-
-            httpMakeResponse(&response);
-            std::string responseString = httpSerialiseResponse(&response);
-            printf("%s \n", responseString.c_str());
-
-            // Router route request to handler
-            stream->send((char *) responseString.c_str(), responseString.length());
-        }
+        processConnection(stream);
     }
+}
+
+int HttpServer::registerHandler(HttpMethod method, std::string path, RequestHandler* handler)
+{
+    handlers.insert(std::make_pair(std::make_tuple(method, path), handler));
 }
 
 int HttpServer::initServerSocket()
@@ -106,4 +78,67 @@ int HttpServer::acceptConnection()
         return -1;
     }
     return sd;
+}
+
+int HttpServer::processConnection(TCPStream* stream)
+{
+    char reqBuf[BUFFERSIZE];
+    memset(reqBuf, 0, BUFFERSIZE);
+    while (1) {
+        HttpRequest request;
+        HttpResponse response;
+
+        int numRead = stream->receive(reqBuf, BUFFERSIZE);
+        if (numRead == 0) {
+            printf("Connection closed by remote peer\n");
+            close(stream->_conn);
+            free(stream);  
+            return 0;
+        }
+        printf("%d \n", numRead);
+        int pr = httpParseRequest((char*)std::string(reqBuf).c_str(), std::string(reqBuf).length(), &request); // Pray req is less than BUFFERSIZE
+        
+        // May have multiple HTTP requests due to HTTP/1.1 
+        // pipelining within a TCP packet
+        // TODO: optimize?
+ 
+
+
+        httpMakeResponse(&response);
+        // routeRequest(&request, &response);
+
+        std::string responseString = httpSerialiseResponse(&response);
+        printf("%s \n", responseString.c_str());
+
+        // Router route request to handler
+        stream->send((char *) responseString.c_str(), responseString.length());
+    }
+}
+
+int HttpServer::routeRequest(HttpRequest* req, HttpResponse* res)
+{
+    RequestHandler* handler;
+    printf("Routing\n");
+    printf("%s \n", req->method.c_str());
+    if (req->method.compare("GET") == 0) {
+        printf("GET\n");
+        if(handlers.find(std::make_tuple(GET, req->path)) != handlers.end()) {
+            handler = handlers[std::make_tuple(GET, req->path)];
+            (*handler)(req, res);
+            return 0;
+        } else {
+            return -2; // handler not found
+        }
+    }
+    else if (req->method.compare("POST") == 0){
+        if(handlers.find(std::make_tuple(POST, req->path)) != handlers.end()) {
+            handler = handlers[std::make_tuple(POST, req->path)];
+            (*handler)(req, res);
+            return 0;
+        } else {
+            return -2;
+        } 
+    } else {
+        return -1; // method not supported
+    }
 }

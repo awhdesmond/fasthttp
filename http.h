@@ -28,7 +28,8 @@
 
 enum HttpMethod {
     HEAD,
-    GET
+    GET,
+    POST
 };
 
 struct HttpRequest
