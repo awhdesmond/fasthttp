@@ -8,22 +8,22 @@ using namespace std;
 class TCPStream
 {
     int _conn;
-  public:
-    friend class HttpServer;
+    public:
+        friend class HttpServer;
 
-    ~TCPStream();
+        ~TCPStream();
 
-    ssize_t send(std::string message);
-    ssize_t receive(std::string& message);
+        ssize_t send(std::string message);
+        ssize_t receive(std::string& message);
 
-    enum {
-        connectionClosed = 0,
-        connectionReset = -1,
-        connectionTimedOut = -2
-    };
+        enum {
+            connectionClosed = 0,
+            connectionReset = -1,
+            connectionTimedOut = -2
+        };
 
-  private:
-    TCPStream(int conn);
-    TCPStream();
-    TCPStream(const TCPStream& stream);
+    private:
+        TCPStream(int conn);
+        TCPStream();
+        TCPStream(const TCPStream& stream);
 };

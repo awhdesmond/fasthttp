@@ -24,11 +24,20 @@ int HttpServer::start()
         printf("Connection on: %d\n", conn);
         TCPStream* stream = new TCPStream(conn);
 
-        std::string message;
-        stream->receive(message);
-        printf("Received Message: %s\n", message.c_str());
+        while (1) {
+            std::string message;
+            int numRead = stream->receive(message);
+            if (numRead == 0) {
+                printf("Connection closed by remote peer\n");
+                close(stream->_conn);
+                free(stream);  
+                break;  
+            }
+            printf("Received Message: %s\n", message.c_str());
 
-        stream->send("Hello World!");
+            stream->send("Hello World!");    
+        }
+        
     }
 }
 
