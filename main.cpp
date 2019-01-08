@@ -7,7 +7,7 @@ class RootHandler : public RequestHandler {
     public:
         RootHandler() {}
         virtual void operator() (HttpRequest* req, HttpResponse* res) {
-            printf("GET /");
+            printf("GET / \n");
         }
 };
 

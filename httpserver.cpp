@@ -85,8 +85,8 @@ int HttpServer::processConnection(TCPStream* stream)
     char reqBuf[BUFFERSIZE];
     memset(reqBuf, 0, BUFFERSIZE);
     while (1) {
-        HttpRequest request;
-        HttpResponse response;
+        HttpRequest req;
+        HttpResponse res;
 
         int numRead = stream->receive(reqBuf, BUFFERSIZE);
         if (numRead == 0) {
@@ -95,22 +95,22 @@ int HttpServer::processConnection(TCPStream* stream)
             free(stream);  
             return 0;
         }
-        printf("%d \n", numRead);
-        int pr = httpParseRequest((char*)std::string(reqBuf).c_str(), std::string(reqBuf).length(), &request); // Pray req is less than BUFFERSIZE
-        
-        // May have multiple HTTP requests due to HTTP/1.1 
-        // pipelining within a TCP packet
-        // TODO: optimize?
- 
 
+        //TODO: Fix this weirdness
+        int pr = httpParseRequest((char*)std::string(reqBuf).c_str(), std::string(reqBuf).length(), &req); // Pray req is less than BUFFERSIZE
 
-        httpMakeResponse(&response);
-        // routeRequest(&request, &response);
+        char tempbuf[BUFFERSIZE];
+        memset(tempbuf, 0, BUFFERSIZE);
+        memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
+        memset(reqBuf, 0, BUFFERSIZE);
+        memcpy(reqBuf, tempbuf, BUFFERSIZE);
 
-        std::string responseString = httpSerialiseResponse(&response);
+        httpMakeResponse(&res);
+        routeRequest(&req, &res); 
+
+        std::string responseString = httpSerialiseResponse(&res);
         printf("%s \n", responseString.c_str());
 
-        // Router route request to handler
         stream->send((char *) responseString.c_str(), responseString.length());
     }
 }
@@ -118,10 +118,7 @@ int HttpServer::processConnection(TCPStream* stream)
 int HttpServer::routeRequest(HttpRequest* req, HttpResponse* res)
 {
     RequestHandler* handler;
-    printf("Routing\n");
-    printf("%s \n", req->method.c_str());
     if (req->method.compare("GET") == 0) {
-        printf("GET\n");
         if(handlers.find(std::make_tuple(GET, req->path)) != handlers.end()) {
             handler = handlers[std::make_tuple(GET, req->path)];
             (*handler)(req, res);

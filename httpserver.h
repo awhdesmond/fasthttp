@@ -6,7 +6,7 @@
 #include "http.h"
 #include "tcpstream.h"
 
-#define BUFFERSIZE 4096
+#define BUFFERSIZE 1024
 
 class RequestHandler {
     public:

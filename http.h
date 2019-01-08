@@ -57,3 +57,5 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req);
 int httpMakeResponse(HttpResponse* res);
 std::string httpSerialiseResponse(HttpResponse* res);
 
+void httpPrintRequest(HttpRequest* req);
+void httpPrintResponse(HttpResponse* res);
