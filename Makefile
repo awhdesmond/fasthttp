@@ -1,7 +1,7 @@
 CC = g++
 
 CFLAGS  = -c -Wall
-SOURCES = main.cpp httpserver.cpp 
+SOURCES = main.cpp httpserver.cpp tcpstream.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 LDFLAGS = -lpthread
 TARGET = main

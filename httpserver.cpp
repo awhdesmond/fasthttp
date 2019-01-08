@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include "httpserver.h"
+#include "tcpstream.h"
 
 HttpServer::HttpServer(int port) : _listenSocket(0), _port(port), _listening(false) {}
 HttpServer::~HttpServer() {
@@ -19,7 +20,15 @@ int HttpServer::start()
     HttpServer::initServerSocket();
     while (1) {
         int conn = HttpServer::acceptConnection();
-        printf("Conneciton on: %d\n", conn);
+
+        printf("Connection on: %d\n", conn);
+        TCPStream* stream = new TCPStream(conn);
+
+        std::string message;
+        stream->receive(message);
+        printf("Received Message: %s\n", message.c_str());
+
+        stream->send("Hello World!");
     }
 }
 
