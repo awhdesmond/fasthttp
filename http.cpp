@@ -1,5 +1,6 @@
 #include <chrono>
 #include <ctime> 
+#include <iostream>
 #include "http.h"
 #include "./vendor/picohttpparser.h"
 
@@ -50,7 +51,28 @@ int httpMakeResponse(HttpResponse* res)
     strftime (timebuf, 128, "%a, %d %b %Y %H:%M:%S GMT", info);
     res->headers.insert(std::make_pair("Date", std::string(timebuf)));
 
-    printf("%s \n", timebuf);
+    // res->headers.insert(std::make_pair("Content-Type", "text/html; charset=UTF-8"));
+    // res->headers.insert(std::make_pair("Connection", "Keep-Alive"));
+    // res->headers.insert(std::make_pair("Keep-Alive", "timeout=3, max=120"));
+    // res->headers.insert(std::make_pair("Last-Modified", "Tue, 08 Jan 2019 14:41:03 GMT"));
 
     return 0;
+}
+
+std::string httpSerialiseResponse(HttpResponse* res)
+{
+    std::string result;
+    result = "HTTP/1.1 " + std::to_string(res->statusCode) + " " + res->statusMsg + HTTP_DELIMETER; // status line
+
+    std::map<std::string, std::string>::iterator it = res->headers.begin();
+    while(it != res->headers.end()) {
+        result = result + it->first + ": " + it->second + HTTP_DELIMETER;
+        it++;
+    }
+    
+    result = result + "Content-Length: " + std::to_string(res->body.length()) + HTTP_DELIMETER;
+    result = result + HTTP_DELIMETER;
+    result = result + res->body;
+
+    return result;
 }

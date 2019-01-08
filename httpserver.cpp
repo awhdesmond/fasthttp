@@ -28,6 +28,7 @@ int HttpServer::start()
         memset(reqBuf, 0, BUFFERSIZE);
         while (1) {
             HttpRequest request;
+            HttpResponse response;
 
             int numRead = stream->receive(reqBuf, BUFFERSIZE);
             if (numRead == 0) {
@@ -48,8 +49,12 @@ int HttpServer::start()
             memset(reqBuf, 0, BUFFERSIZE);
             memcpy(reqBuf, tempReqBuf, BUFFERSIZE - pr);
 
+            httpMakeResponse(&response);
+            std::string responseString = httpSerialiseResponse(&response);
+            printf("%s \n", responseString.c_str());
+
             // Router route request to handler
-            stream->send((char*) std::string("Hello World!").c_str(), std::string("Hello World!").length());
+            stream->send((char *) responseString.c_str(), responseString.length());
         }
     }
 }

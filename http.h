@@ -24,6 +24,8 @@
 #define HTTP_STATUS_MSG_SERVICE_UNAVALIABLE "Service Unavailable"
 #define HTTP_STATUS_CODE_SERVICE_UNAVALIABLE 503
 
+#define HTTP_DELIMETER "\r\n"
+
 enum HttpMethod {
     HEAD,
     GET
@@ -33,7 +35,7 @@ struct HttpRequest
 {
     std::string method;
     std::string path;
-    int version;
+    int version; // minor version
     std::map<std::string, std::string> headers;
     std::string body;
 };
@@ -42,7 +44,7 @@ struct HttpResponse
 {
     int statusCode;
     std::string statusMsg;
-    int version;
+    int version; // minor version
     std::map<std::string, std::string> headers;
     std::string body;
 };
@@ -52,3 +54,5 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req);
 
 // Generate a default http response
 int httpMakeResponse(HttpResponse* res);
+std::string httpSerialiseResponse(HttpResponse* res);
+
