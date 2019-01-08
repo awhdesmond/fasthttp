@@ -13,8 +13,8 @@ class TCPStream
 
         ~TCPStream();
 
-        ssize_t send(std::string message);
-        ssize_t receive(std::string& message);
+        ssize_t send(char* buffer, size_t len);
+        ssize_t receive(char* buffer, size_t len);
 
         enum {
             connectionClosed = 0,

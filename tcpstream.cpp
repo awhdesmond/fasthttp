@@ -8,13 +8,12 @@ TCPStream::~TCPStream()
     close(_conn);
 }
 
-ssize_t TCPStream::send(std::string message)
+ssize_t TCPStream::send(char* buffer, size_t len)
 {
-    return write(_conn, message.c_str(), message.length());
+    return write(_conn, buffer, len);
 }
 
-ssize_t TCPStream::receive(std::string& message)
+ssize_t TCPStream::receive(char* buffer, size_t len)
 {
-    message = std::string(BUFSIZ, 0);
-    return read(_conn, &message[0], BUFSIZ - 1);
+    return read(_conn, buffer, len);
 }

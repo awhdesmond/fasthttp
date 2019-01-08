@@ -3,10 +3,7 @@
 #include <string>
 #include "http.h"
 
-enum HttpMethod {
-    HEAD,
-    GET
-};
+#define BUFFERSIZE 4096
 
 class RequestHandler {
     public:
@@ -32,4 +29,5 @@ class HttpServer
     private:
         int initServerSocket();
         int acceptConnection();
+        int routeRequest(HttpRequest req);
 };

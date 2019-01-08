@@ -24,20 +24,33 @@ int HttpServer::start()
         printf("Connection on: %d\n", conn);
         TCPStream* stream = new TCPStream(conn);
 
+        char reqBuf[BUFFERSIZE];
+        memset(reqBuf, 0, BUFFERSIZE);
         while (1) {
-            std::string message;
-            int numRead = stream->receive(message);
+            HttpRequest request;
+
+            int numRead = stream->receive(reqBuf, BUFFERSIZE);
             if (numRead == 0) {
                 printf("Connection closed by remote peer\n");
                 close(stream->_conn);
                 free(stream);  
                 break;  
             }
-            printf("Received Message: %s\n", message.c_str());
+            printf("Received Message: %s\n", reqBuf);
+            int pr = httpParseRequest(reqBuf, BUFFERSIZE, &request); // Pray req is less than BUFFERSIZE
+            
+            // May have multiple HTTP requests due to HTTP/1.1 
+            // pipelining within a TCP packet
+            // TODO: optimize?
+            char tempReqBuf[BUFFERSIZE];
+            memset(tempReqBuf, 0, BUFFERSIZE);
+            memcpy(tempReqBuf, reqBuf + pr, BUFFERSIZE - pr);
+            memset(reqBuf, 0, BUFFERSIZE);
+            memcpy(reqBuf, tempReqBuf, BUFFERSIZE - pr);
 
-            stream->send("Hello World!");    
+            // Router route request to handler
+            stream->send((char*) std::string("Hello World!").c_str(), std::string("Hello World!").length());
         }
-        
     }
 }
 
@@ -56,7 +69,7 @@ int HttpServer::initServerSocket()
     setsockopt(_listenSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof opt); 
 
     // Bind to local addr and port
-    int r = bind(_listenSocket, (struct sockaddr*)&addr, sizeof(addr));
+    int r = ::bind(_listenSocket, (struct sockaddr*)&addr, sizeof(addr));
     if (r != 0) {
         perror("bind() failed");
         return r;
@@ -82,7 +95,7 @@ int HttpServer::acceptConnection()
     struct sockaddr_in addr;
     socklen_t len = sizeof(addr);
     memset(&addr, 0, sizeof(addr));
-    int sd = accept(_listenSocket, (struct sockaddr*) &addr, &len);
+    int sd = ::accept(_listenSocket, (struct sockaddr*) &addr, &len);
     if (sd < 0) {
         perror("accept() failed");
         return -1;
