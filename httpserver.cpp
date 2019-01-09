@@ -26,52 +26,72 @@ class ConnectionThread : public Thread
     ConnectionThread(workqueue<WorkItem*>& queue, std::map<std::tuple<HttpMethod, std::string>, RequestHandler*>* handlers) : _queue(queue), _handlers(handlers) {}
  
     void* run() {
-        // Remove 1 item at a time and process it. Blocks if no items are 
-        // available to process.
         while (1) {
             WorkItem* item = _queue.remove();
             TCPStream* stream = item->getStream();
 
+            HttpRequest req;
+            HttpResponse res;
+
             char reqBuf[BUFFERSIZE];
             memset(reqBuf, 0, BUFFERSIZE);
+            
+            int numRead;
+            int prevLen = 0;
 
-            while (1) {
-                HttpRequest req;
-                HttpResponse res;
+            while ((numRead = stream->receive(reqBuf + prevLen, BUFFERSIZE - prevLen)) > 0) {
+                int pr = httpParseRequest(reqBuf, BUFFERSIZE, &req);
+                
+                // char tempbuf[BUFFERSIZE];
+                // memset(tempbuf, 0, BUFFERSIZE);
+                // memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
+                // memset(reqBuf, 0, BUFFERSIZE);
+                // memcpy(reqBuf, tempbuf, BUFFERSIZE);
+                
+                // prevLen = strlen(reqBuf);      
+                // httpMakeResponse(&res);
+                // routeRequest(&req, &res); 
 
-                int numRead;
-                int prevLen = 0;
-                while ((numRead = stream->receive(reqBuf + prevLen, BUFFERSIZE - prevLen)) > 0) {
-                    //TODO: Fix this weirdness
-                    int pr = httpParseRequest((char*)std::string(reqBuf).c_str(), std::string(reqBuf).length(), &req); // Pray req is less than BUFFERSIZE
-
-                    char tempbuf[BUFFERSIZE];
-                    memset(tempbuf, 0, BUFFERSIZE);
-                    memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
-                    memset(reqBuf, 0, BUFFERSIZE);
-                    memcpy(reqBuf, tempbuf, BUFFERSIZE);
-                    
-                    prevLen = strlen(reqBuf); 
-
-                    httpMakeResponse(&res);
-                    // routeRequest(&req, &res); 
-
-                    std::string responseString = httpSerialiseResponse(&res);
-                    stream->send((char *) responseString.c_str(), responseString.length());
-                }
-
-                if (numRead == TCPStream::connectionTimedOut) {
-                    printf("Connection timeout\n");
-                    delete stream;
-                    return NULL;
-                }
-
+                std::string responseString = httpSerialiseResponse(&res);
+                stream->send((char *) responseString.c_str(), responseString.length());
+            }
+            if (numRead == TCPStream::connectionTimedOut) {
+                printf("Connection timeout\n");
+            } else {
                 printf("Connection closed by remote peer\n");
-                delete stream; 
-                return NULL;
+            }
+            delete item;
+        }
+
+        // Should never get here
+        return NULL;
+    }
+
+    private:
+        int routeRequest(HttpRequest* req, HttpResponse* res)
+        {
+            RequestHandler* handler;
+            if (req->method.compare("GET") == 0) {
+                if(_handlers->find(std::make_tuple(GET, req->path)) != _handlers->end()) {
+                    handler = (*_handlers)[std::make_tuple(GET, req->path)];
+                    (*handler)(req, res);
+                    return 0;
+                } else {
+                    return -2; // handler not found
+                }
+            }
+            else if (req->method.compare("POST") == 0){
+                if(_handlers->find(std::make_tuple(POST, req->path)) != _handlers->end()) {
+                    handler = (*_handlers)[std::make_tuple(POST, req->path)];
+                    (*handler)(req, res);
+                    return 0;
+                } else {
+                    return -2;
+                } 
+            } else {
+                return -1; // method not supported
             }
         }
-    }
 
 };
 
@@ -135,7 +155,7 @@ int HttpServer::initServerSocket()
     setsockopt(_listenSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof opt); 
 
     // Bind to local addr and port
-    int r = ::bind(_listenSocket, (struct sockaddr*)&addr, sizeof(addr));
+    int r = ::bind(_listenSocket, (struct sockaddr*)&addr, sizeof addr);
     if (r != 0) {
         perror("bind() failed");
         return r;
@@ -159,37 +179,12 @@ int HttpServer::acceptConnection()
     }
 
     struct sockaddr_in addr;
-    socklen_t len = sizeof(addr);
-    memset(&addr, 0, sizeof(addr));
+    socklen_t len = sizeof addr;
+    memset(&addr, 0, sizeof addr);
     int sd = ::accept(_listenSocket, (struct sockaddr*) &addr, &len);
     if (sd < 0) {
         perror("accept() failed");
         return -1;
     }
     return sd;
-}
-
-int HttpServer::routeRequest(HttpRequest* req, HttpResponse* res)
-{
-    RequestHandler* handler;
-    if (req->method.compare("GET") == 0) {
-        if(_handlers.find(std::make_tuple(GET, req->path)) != _handlers.end()) {
-            handler = _handlers[std::make_tuple(GET, req->path)];
-            (*handler)(req, res);
-            return 0;
-        } else {
-            return -2; // handler not found
-        }
-    }
-    else if (req->method.compare("POST") == 0){
-        if(_handlers.find(std::make_tuple(POST, req->path)) != _handlers.end()) {
-            handler = _handlers[std::make_tuple(POST, req->path)];
-            (*handler)(req, res);
-            return 0;
-        } else {
-            return -2;
-        } 
-    } else {
-        return -1; // method not supported
-    }
 }

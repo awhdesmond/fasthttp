@@ -8,9 +8,10 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req)
 {
     const char *method, *path;
     int minor_version;
-    struct phr_header headers[100];
+    struct phr_header headers[32];
     size_t method_len, path_len, num_headers;
-    
+    num_headers = sizeof(headers) / sizeof(headers[0]);
+
     int pr = phr_parse_request(reqBuf, buflen, &method, &method_len, &path, &path_len,
                                &minor_version, headers, &num_headers, 0);
 
@@ -73,7 +74,7 @@ void httpPrintRequest(HttpRequest* req)
     printf("Request method is %s\n", req->method.c_str());
     printf("Request path is %s\n", req->path.c_str());
     printf("HTTP version is 1.%d\n", req->version);
-    printf("Number of Request Headers: %d\n", req->headers.size());
+    printf("Number of Request Headers: %lu\n", req->headers.size());
     printf("Request Headers:\n");
     std::map<std::string, std::string>::iterator it = req->headers.begin();
     while(it != req->headers.end()) {

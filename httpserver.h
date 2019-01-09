@@ -36,5 +36,5 @@ class HttpServer
     private:
         int initServerSocket();
         int acceptConnection();
-        int routeRequest(HttpRequest* req, HttpResponse* res);
+        
 };
