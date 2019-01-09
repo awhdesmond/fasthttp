@@ -74,30 +74,26 @@ class ConnectionThread : public Thread
         int routeRequest(HttpRequest* req, HttpResponse* res)
         {
             RequestHandler* handler;
-            handler = (*_handlers)[std::make_tuple(GET, "/")];
-            (*handler)(req, res);
-            return 0;
-            
-            // if (req->method.compare("GET") == 0) {
-            //     if(_handlers->find(std::make_tuple(GET, req->path)) != _handlers->end()) {
-            //         handler = (*_handlers)[std::make_tuple(GET, req->path)];
-            //         (*handler)(req, res);
-            //         return 0;
-            //     } else {
-            //         return -2; // handler not found
-            //     }
-            // }
-            // else if (req->method.compare("POST") == 0){
-            //     if(_handlers->find(std::make_tuple(POST, req->path)) != _handlers->end()) {
-            //         handler = (*_handlers)[std::make_tuple(POST, req->path)];
-            //         (*handler)(req, res);
-            //         return 0;
-            //     } else {
-            //         return -2;
-            //     } 
-            // } else {
-            //     return -1; // method not supported
-            // }
+            if (req->method.compare("GET") == 0) {
+                if(_handlers->find(std::make_tuple(GET, req->path)) != _handlers->end()) {
+                    handler = (*_handlers)[std::make_tuple(GET, req->path)];
+                    (*handler)(req, res);
+                    return 0;
+                } else {
+                    return -2; // handler not found
+                }
+            }
+            else if (req->method.compare("POST") == 0){
+                if(_handlers->find(std::make_tuple(POST, req->path)) != _handlers->end()) {
+                    handler = (*_handlers)[std::make_tuple(POST, req->path)];
+                    (*handler)(req, res);
+                    return 0;
+                } else {
+                    return -2;
+                } 
+            } else {
+                return -1; // method not supported
+            }
         }
 
 };
