@@ -19,7 +19,7 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req)
         req->method = std::string(method, (int)method_len);
         req->path = std::string(path, (int)path_len);
         req->version = minor_version;
-        int i;
+        size_t i;
         for (i = 0; i != num_headers; ++i) {
             req->headers.insert(std::make_pair(std::string(headers[i].name, headers[i].name_len), std::string(headers[i].value, headers[i].value_len)));   
         }

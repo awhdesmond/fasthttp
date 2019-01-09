@@ -8,7 +8,7 @@
 #include "thread.h"
 
 #define BUFFERSIZE 1024
-#define NUM_WORKERS 16
+#define NUM_WORKERS 1
 
 class RequestHandler {
     public:

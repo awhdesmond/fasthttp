@@ -2,102 +2,12 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <string.h>
+#include <fcntl.h>
 #include "httpserver.h"
 #include "tcpstream.h"
-#include "workqueue.h"
-
-class WorkItem
-{
-    TCPStream* _stream;
- 
-  public:
-    WorkItem(TCPStream* stream) : _stream(stream) {}
-    ~WorkItem() { delete _stream; }
- 
-    TCPStream* getStream() { return _stream; }
-};
-
-class ConnectionThread : public Thread 
-{
-    workqueue<WorkItem*>& _queue; // combined queue
-    std::map<std::tuple<HttpMethod, std::string>, RequestHandler*>* _handlers;
-
-    public:
-    ConnectionThread(workqueue<WorkItem*>& queue, std::map<std::tuple<HttpMethod, std::string>, RequestHandler*>* handlers) : _queue(queue), _handlers(handlers) {}
- 
-    void* run() {
-        while (1) {
-            WorkItem* item = _queue.remove();
-            TCPStream* stream = item->getStream();
-
-            HttpRequest req;
-            HttpResponse res;
-
-            char reqBuf[BUFFERSIZE];
-            memset(reqBuf, 0, BUFFERSIZE);
-            
-            int numRead;
-            int prevLen = 0;
-
-            while ((numRead = stream->receive(reqBuf + prevLen, BUFFERSIZE - prevLen)) > 0) {
-                int pr = httpParseRequest(reqBuf, BUFFERSIZE, &req);
-                
-                char tempbuf[BUFFERSIZE];
-                memset(tempbuf, 0, BUFFERSIZE);
-                memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
-                memset(reqBuf, 0, BUFFERSIZE);
-                memcpy(reqBuf, tempbuf, BUFFERSIZE);
-                
-                prevLen = strlen(reqBuf);      
-                httpMakeResponse(&res);
-                routeRequest(&req, &res); 
-
-                std::string resStr = httpSerialiseResponse(&res);
-                stream->send((char *)resStr.c_str(), resStr.length());
-
-                //std::string resStr = "HTTP/1.1 200 OK\r\nServer: WebServer\r\nContent-Type: text/html\r\nContent-Length: 3\r\n\r\n123";
-                //stream->send((char *)resStr.c_str(), resStr.length());
-            }
-            if (numRead == TCPStream::connectionTimedOut) {
-                printf("Connection timeout\n");
-            } else {
-                printf("Connection closed by remote peer\n");
-            }
-            delete item;
-        }
-
-        // Should never get here
-        return NULL;
-    }
-
-    private:
-        int routeRequest(HttpRequest* req, HttpResponse* res)
-        {
-            RequestHandler* handler;
-            if (req->method.compare("GET") == 0) {
-                if(_handlers->find(std::make_tuple(GET, req->path)) != _handlers->end()) {
-                    handler = (*_handlers)[std::make_tuple(GET, req->path)];
-                    (*handler)(req, res);
-                    return 0;
-                } else {
-                    return -2; // handler not found
-                }
-            }
-            else if (req->method.compare("POST") == 0){
-                if(_handlers->find(std::make_tuple(POST, req->path)) != _handlers->end()) {
-                    handler = (*_handlers)[std::make_tuple(POST, req->path)];
-                    (*handler)(req, res);
-                    return 0;
-                } else {
-                    return -2;
-                } 
-            } else {
-                return -1; // method not supported
-            }
-        }
-
-};
-
+#include "connectionthread.h"
+#include "epollqueue.h"
 
 HttpServer::HttpServer(int port) : _listenSocket(0), _port(port), _listening(false) {}
 HttpServer::~HttpServer() {
@@ -112,9 +22,12 @@ int HttpServer::start()
         return 0;
     }
 
-    workqueue<WorkItem*> queue;
+    EpollQueue* epollqList[NUM_WORKERS];
+
     for (int i = 0; i < NUM_WORKERS; i++) {
-        ConnectionThread* thread = new ConnectionThread(queue, &_handlers);
+        EpollQueue *epollq = new EpollQueue();
+        epollqList[i] = epollq;
+        ConnectionThread* thread = new ConnectionThread(epollq, &_handlers);
         if (!thread) {
             printf("Could not create ConnectionHandler %d\n", i);
             exit(1);
@@ -125,22 +38,15 @@ int HttpServer::start()
     HttpServer::initServerSocket();
     while (1) {
         int conn = acceptConnection();
-        TCPStream* stream = new TCPStream(conn);
-
-        // Create work item
-        WorkItem* item = new WorkItem(stream);
-        if (!item) {
-            printf("Could not create work item a connection\n");
-            continue;
-        }
-        queue.add(item);
-        
+        int randThreadIdx = rand() % NUM_WORKERS;
+        epollqList[randThreadIdx]->add(conn);
     }
 }
 
 int HttpServer::registerHandler(HttpMethod method, std::string path, RequestHandler* handler)
 {
     _handlers.insert(std::make_pair(std::make_tuple(method, path), handler));
+    return 0;
 }
 
 int HttpServer::initServerSocket()
@@ -189,5 +95,13 @@ int HttpServer::acceptConnection()
         perror("accept() failed");
         return -1;
     }
+
+    int opt = 1;
+    setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof opt);
+
+    int sflags = fcntl(sd, F_GETFL, 0);
+    sflags |= O_NONBLOCK;
+    fcntl(sd, F_SETFL, sflags);
+
     return sd;
 }
