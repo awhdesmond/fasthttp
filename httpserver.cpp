@@ -92,11 +92,7 @@ int HttpServer::processConnection(TCPStream* stream)
         int prevLen = 0;
         while ((numRead = stream->receive(reqBuf + prevLen, BUFFERSIZE - prevLen)) > 0) {
             //TODO: Fix this weirdness
-            printf("\n");
-            printf("numread: %d\n", numRead);
             int pr = httpParseRequest((char*)std::string(reqBuf).c_str(), std::string(reqBuf).length(), &req); // Pray req is less than BUFFERSIZE
-
-            httpPrintRequest(&req);
 
             char tempbuf[BUFFERSIZE];
             memset(tempbuf, 0, BUFFERSIZE);
@@ -105,7 +101,6 @@ int HttpServer::processConnection(TCPStream* stream)
             memcpy(reqBuf, tempbuf, BUFFERSIZE);
             
             prevLen = strlen(reqBuf); 
-            printf("prevlen: %d\n", prevLen);
 
             httpMakeResponse(&res);
             routeRequest(&req, &res); 
