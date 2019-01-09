@@ -23,7 +23,7 @@ class HttpServer
     int _listenSocket;
     int _port;
     bool _listening;
-    
+
     std::map<std::tuple<HttpMethod, std::string>, RequestHandler*> _handlers;
 
     public:

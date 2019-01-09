@@ -2,6 +2,7 @@
 
 #include <string>
 #include <map>
+#include "filemanager.h"
 #include "utils.h"
 
 #define HTTP_STATUS_MSG_CONTINUE "Continue"
@@ -26,6 +27,8 @@
 #define HTTP_STATUS_CODE_SERVICE_UNAVALIABLE 503
 
 #define HTTP_DELIMETER "\r\n"
+
+static FileManager fm;
 
 enum HttpMethod {
     HEAD,
@@ -55,10 +58,10 @@ struct HttpResponse
     // Returns file size, i.e. num bytes read
     int sendFile(std::string relativePathname) { 
         int r;
-        if ((r = readFileIntoString(relativePathname, &body)) < 0) {
+        if ((r = fm.readFile(relativePathname, &body)) < 0) {
             return r;
         }
-        
+
         std::string fileExt = extractFileExtension(&relativePathname);
 
         if (fileExt.compare(CONTENT_TYPE_JSON) == 0) {

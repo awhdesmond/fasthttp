@@ -42,18 +42,21 @@ class ConnectionThread : public Thread
             while ((numRead = stream->receive(reqBuf + prevLen, BUFFERSIZE - prevLen)) > 0) {
                 int pr = httpParseRequest(reqBuf, BUFFERSIZE, &req);
                 
-                // char tempbuf[BUFFERSIZE];
-                // memset(tempbuf, 0, BUFFERSIZE);
-                // memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
-                // memset(reqBuf, 0, BUFFERSIZE);
-                // memcpy(reqBuf, tempbuf, BUFFERSIZE);
+                char tempbuf[BUFFERSIZE];
+                memset(tempbuf, 0, BUFFERSIZE);
+                memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
+                memset(reqBuf, 0, BUFFERSIZE);
+                memcpy(reqBuf, tempbuf, BUFFERSIZE);
                 
-                // prevLen = strlen(reqBuf);      
-                // httpMakeResponse(&res);
-                // routeRequest(&req, &res); 
+                prevLen = strlen(reqBuf);      
+                httpMakeResponse(&res);
+                routeRequest(&req, &res); 
 
-                std::string responseString = httpSerialiseResponse(&res);
-                stream->send((char *) responseString.c_str(), responseString.length());
+                std::string resStr = httpSerialiseResponse(&res);
+                stream->send((char *)resStr.c_str(), resStr.length());
+
+                //std::string resStr = "HTTP/1.1 200 OK\r\nServer: WebServer\r\nContent-Type: text/html\r\nContent-Length: 3\r\n\r\n123";
+                //stream->send((char *)resStr.c_str(), resStr.length());
             }
             if (numRead == TCPStream::connectionTimedOut) {
                 printf("Connection timeout\n");
@@ -71,26 +74,30 @@ class ConnectionThread : public Thread
         int routeRequest(HttpRequest* req, HttpResponse* res)
         {
             RequestHandler* handler;
-            if (req->method.compare("GET") == 0) {
-                if(_handlers->find(std::make_tuple(GET, req->path)) != _handlers->end()) {
-                    handler = (*_handlers)[std::make_tuple(GET, req->path)];
-                    (*handler)(req, res);
-                    return 0;
-                } else {
-                    return -2; // handler not found
-                }
-            }
-            else if (req->method.compare("POST") == 0){
-                if(_handlers->find(std::make_tuple(POST, req->path)) != _handlers->end()) {
-                    handler = (*_handlers)[std::make_tuple(POST, req->path)];
-                    (*handler)(req, res);
-                    return 0;
-                } else {
-                    return -2;
-                } 
-            } else {
-                return -1; // method not supported
-            }
+            handler = (*_handlers)[std::make_tuple(GET, "/")];
+            (*handler)(req, res);
+            return 0;
+            
+            // if (req->method.compare("GET") == 0) {
+            //     if(_handlers->find(std::make_tuple(GET, req->path)) != _handlers->end()) {
+            //         handler = (*_handlers)[std::make_tuple(GET, req->path)];
+            //         (*handler)(req, res);
+            //         return 0;
+            //     } else {
+            //         return -2; // handler not found
+            //     }
+            // }
+            // else if (req->method.compare("POST") == 0){
+            //     if(_handlers->find(std::make_tuple(POST, req->path)) != _handlers->end()) {
+            //         handler = (*_handlers)[std::make_tuple(POST, req->path)];
+            //         (*handler)(req, res);
+            //         return 0;
+            //     } else {
+            //         return -2;
+            //     } 
+            // } else {
+            //     return -1; // method not supported
+            // }
         }
 
 };
