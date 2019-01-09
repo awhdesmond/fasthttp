@@ -35,6 +35,8 @@ class ConnectionThread : public Thread
                 HttpRequest req;
                 HttpResponse res;
                 char reqBuf[BUFFERSIZE];
+                char tempbuf[BUFFERSIZE];
+                memset(tempbuf, 0, BUFFERSIZE);
                 memset(reqBuf, 0, BUFFERSIZE);
                 
                 int prevLen = 0;
@@ -61,20 +63,20 @@ class ConnectionThread : public Thread
                         break;
                     }
 
-                    int pr = httpParseRequest(reqBuf, BUFFERSIZE, &req);
-                    
-                    char tempbuf[BUFFERSIZE];
-                    memset(tempbuf, 0, BUFFERSIZE);
+                    int pr = httpParseRequest(reqBuf, BUFFERSIZE, &req);                    
                     memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
                     memset(reqBuf, 0, BUFFERSIZE);
-                    memcpy(reqBuf, tempbuf, BUFFERSIZE);
-                    
+                    memcpy(reqBuf, tempbuf, BUFFERSIZE - pr);
+
                     prevLen = strlen(reqBuf);      
+
                     httpMakeResponse(&res);
                     routeRequest(&req, &res); 
 
+                    // std::string resStr = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nDate: Wed, 09 Jan 2019 14:27:31 GMT\r\nServer: WebServer\r\nContent-Length: 200\r\n\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; 
                     std::string resStr = httpSerialiseResponse(&res);
                     // printf("%s\n", resStr.c_str())
+                    
                     if ((write ((eptr + i)->data.fd, resStr.c_str(), resStr.length())) == -1) {
                         perror("write()");
                     }
