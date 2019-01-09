@@ -20,7 +20,7 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req)
         req->version = minor_version;
         int i;
         for (i = 0; i != num_headers; ++i) {
-            req->headers.insert(std::make_pair(headers[i].name, headers[i].value));   
+            req->headers.insert(std::make_pair(std::string(headers[i].name, headers[i].name_len), std::string(headers[i].value, headers[i].value_len)));   
         }
     }
     return pr; // positive is num bytes used, -1 is error, -2 is incomplete
@@ -73,6 +73,7 @@ void httpPrintRequest(HttpRequest* req)
     printf("Request method is %s\n", req->method.c_str());
     printf("Request path is %s\n", req->path.c_str());
     printf("HTTP version is 1.%d\n", req->version);
+    printf("Number of Request Headers: %d\n", req->headers.size());
     printf("Request Headers:\n");
     std::map<std::string, std::string>::iterator it = req->headers.begin();
     while(it != req->headers.end()) {

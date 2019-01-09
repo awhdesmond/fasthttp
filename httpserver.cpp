@@ -88,30 +88,41 @@ int HttpServer::processConnection(TCPStream* stream)
         HttpRequest req;
         HttpResponse res;
 
-        int numRead = stream->receive(reqBuf, BUFFERSIZE);
-        if (numRead == 0) {
-            printf("Connection closed by remote peer\n");
-            close(stream->_conn);
-            free(stream);  
-            return 0;
+        int numRead;
+        int prevLen = 0;
+        while ((numRead = stream->receive(reqBuf + prevLen, BUFFERSIZE - prevLen)) > 0) {
+            //TODO: Fix this weirdness
+            printf("\n");
+            printf("numread: %d\n", numRead);
+            int pr = httpParseRequest((char*)std::string(reqBuf).c_str(), std::string(reqBuf).length(), &req); // Pray req is less than BUFFERSIZE
+
+            httpPrintRequest(&req);
+
+            char tempbuf[BUFFERSIZE];
+            memset(tempbuf, 0, BUFFERSIZE);
+            memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
+            memset(reqBuf, 0, BUFFERSIZE);
+            memcpy(reqBuf, tempbuf, BUFFERSIZE);
+            
+            prevLen = strlen(reqBuf); 
+            printf("prevlen: %d\n", prevLen);
+
+            httpMakeResponse(&res);
+            routeRequest(&req, &res); 
+
+            std::string responseString = httpSerialiseResponse(&res);
+            stream->send((char *) responseString.c_str(), responseString.length());
         }
 
-        //TODO: Fix this weirdness
-        int pr = httpParseRequest((char*)std::string(reqBuf).c_str(), std::string(reqBuf).length(), &req); // Pray req is less than BUFFERSIZE
+        if (numRead == TCPStream::connectionTimedOut) {
+            printf("Connection timeout\n");
+            delete stream;  
+            return numRead;   
+        }
 
-        char tempbuf[BUFFERSIZE];
-        memset(tempbuf, 0, BUFFERSIZE);
-        memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
-        memset(reqBuf, 0, BUFFERSIZE);
-        memcpy(reqBuf, tempbuf, BUFFERSIZE);
-
-        httpMakeResponse(&res);
-        routeRequest(&req, &res); 
-
-        std::string responseString = httpSerialiseResponse(&res);
-        printf("%s \n", responseString.c_str());
-
-        stream->send((char *) responseString.c_str(), responseString.length());
+        printf("Connection closed by remote peer\n");
+        delete stream;  
+        return numRead;
     }
 }
 

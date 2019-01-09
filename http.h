@@ -2,6 +2,7 @@
 
 #include <string>
 #include <map>
+#include "utils.h"
 
 #define HTTP_STATUS_MSG_CONTINUE "Continue"
 #define HTTP_STATUS_CODE_CONTINUE 100
@@ -48,6 +49,32 @@ struct HttpResponse
     int version; // minor version
     std::map<std::string, std::string> headers;
     std::string body;
+
+    // 1. load file contents into response body
+    // 2. check file ext to specify content-type
+    // Returns file size, i.e. num bytes read
+    int sendFile(std::string relativePathname) { 
+        int r;
+        if ((r = readFileIntoString(relativePathname, &body)) < 0) {
+            return r;
+        }
+        
+        std::string fileExt = extractFileExtension(&relativePathname);
+
+        if (fileExt.compare(CONTENT_TYPE_JSON) == 0) {
+            headers.insert(std::make_pair("Content-Type", "application/json"));
+        } else if (fileExt.compare(CONTENT_TYPE_CSV) == 0) {
+            headers.insert(std::make_pair("Content-Type", "text/csv"));
+        } else if ((fileExt.compare(CONTENT_TYPE_HTML) == 0)) {
+            headers.insert(std::make_pair("Content-Type", "text/html"));
+        } else if ((fileExt.compare(CONTENT_TYPE_XML) == 0)) {
+            headers.insert(std::make_pair("Content-Type", "text/xml"));
+        } else {
+            headers.insert(std::make_pair("Content-Type", "text/plain"));
+        }
+
+        return body.length();
+    }
 };
 
 // Returns number of bytes needed to for message
