@@ -23,57 +23,97 @@ class ConnectionThread : public Thread
             
             int n = _epollq->wait();
             struct epoll_event* eptr = _epollq->getEventsPtr();
-            
-            // if (n != 0) {
-            //     printf("num conn: %d \n", n);
-            // }            
+        
 
             int i;
             for (i = 0; i < n; i++) {
                 if (((eptr + i)->events & EPOLLERR) || ((eptr + i)->events & EPOLLHUP) || !((eptr + i)->events & EPOLLIN)) {
-                    // printf("epoll error\n");
                     close((eptr + i)->data.fd);
                     continue;
                 } 
 
-                // printf("conn thread fd: %d \n", (eptr + i)->data.fd);
-
+                HttpRequest req;
+                HttpResponse res;
+                char reqBuf[BUFFERSIZE];
+                memset(reqBuf, 0, BUFFERSIZE);
+                
+                int prevLen = 0;
                 int done = 0;
                 // We must read whatever data is available
                 // completely, as we are running in edge-triggered mode
                 // and won't get a notification again for the same data.
-
                 while (1) {
                     ssize_t bytesRead;
-                    char buf[BUFSIZ];
+                    bytesRead = read((eptr + i)->data.fd, reqBuf + prevLen, BUFFERSIZE - prevLen);
 
-                    bytesRead = read((eptr + i)->data.fd, buf, sizeof buf);
-                    // printf("sd: %d \n", (eptr + i)->data.fd);
-                    if (bytesRead < 0) {
+                    if (bytesRead == -1) {
+                        // If errno == EAGAIN, that means we have read all
+                        // data. So go back to the main loop.
                         if (errno != EAGAIN) {
-                            perror("read()");
+                            perror ("read");
                             done = 1;
-                        } else {
-                            string res = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nDate: Wed, 09 Jan 2019 14:27:31 GMT\r\nServer: WebServer\r\nContent-Length: 200\r\n\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-                            if ((write ((eptr + i)->data.fd, res.c_str(), res.length())) == -1) {
-                                perror("write()");
-                            }
                         }
                         break;
                     }
-                    else if (bytesRead == 0) {
+                    else if (bytesRead == 0) { 
+                        // End of file. The remote has closed the connection.
                         done = 1;
                         break;
                     }
-                }
 
+                    int pr = httpParseRequest(reqBuf, BUFFERSIZE, &req);
+                    
+                    char tempbuf[BUFFERSIZE];
+                    memset(tempbuf, 0, BUFFERSIZE);
+                    memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
+                    memset(reqBuf, 0, BUFFERSIZE);
+                    memcpy(reqBuf, tempbuf, BUFFERSIZE);
+                    
+                    prevLen = strlen(reqBuf);      
+                    httpMakeResponse(&res);
+                    routeRequest(&req, &res); 
+
+                    std::string resStr = httpSerialiseResponse(&res);
+                    // printf("%s\n", resStr.c_str())
+                    if ((write ((eptr + i)->data.fd, resStr.c_str(), resStr.length())) == -1) {
+                        perror("write()");
+                    }
+                }
                 if (done) {
                     printf ("Closed connection on descriptor %d\n", (eptr + i)->data.fd);
+                    // Closing the descriptor will make epoll remove it
+                    // from the set of descriptors which are monitored.
                     _epollq->remove((eptr + i)->data.fd);
                 }
             }
         }
 
         return NULL; // should not reach here
+    }
+
+    private:
+    int routeRequest(HttpRequest* req, HttpResponse* res)
+    {
+        RequestHandler* handler;
+        if (req->method.compare("GET") == 0) {
+            if(_handlers->find(std::make_tuple(GET, req->path)) != _handlers->end()) {
+                handler = (*_handlers)[std::make_tuple(GET, req->path)];
+                (*handler)(req, res);
+                return 0;
+            } else {
+                return -2; // handler not found
+            }
+        }
+        else if (req->method.compare("POST") == 0){
+            if(_handlers->find(std::make_tuple(POST, req->path)) != _handlers->end()) {
+                handler = (*_handlers)[std::make_tuple(POST, req->path)];
+                (*handler)(req, res);
+                return 0;
+            } else {
+                return -2;
+            } 
+        } else {
+            return -1; // method not supported
+        }
     }
 };
