@@ -5,8 +5,10 @@
 #include <tuple>
 #include "http.h"
 #include "tcpstream.h"
+#include "thread.h"
 
 #define BUFFERSIZE 1024
+#define NUM_WORKERS 8
 
 class RequestHandler {
     public:
@@ -22,7 +24,7 @@ class HttpServer
     int _port;
     bool _listening;
     
-    std::map<std::tuple<HttpMethod, std::string>, RequestHandler*> handlers;
+    std::map<std::tuple<HttpMethod, std::string>, RequestHandler*> _handlers;
 
     public:
         HttpServer(int port);
@@ -34,6 +36,5 @@ class HttpServer
     private:
         int initServerSocket();
         int acceptConnection();
-        int processConnection(TCPStream* stream);
         int routeRequest(HttpRequest* req, HttpResponse* res);
 };

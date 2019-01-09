@@ -5,18 +5,18 @@
 
 using namespace std;
 
-template <typename T> class wqueue
+template <typename T> class workqueue
 {
     list<T>          m_queue;
     pthread_mutex_t  m_mutex;
     pthread_cond_t   m_condv; 
 
   public:
-    wqueue() {
+    workqueue() {
         pthread_mutex_init(&m_mutex, NULL);
         pthread_cond_init(&m_condv, NULL);
     }
-    ~wqueue() {
+    ~workqueue() {
         pthread_mutex_destroy(&m_mutex);
         pthread_cond_destroy(&m_condv);
     }

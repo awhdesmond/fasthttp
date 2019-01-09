@@ -16,7 +16,7 @@ class TCPStream
         ~TCPStream();
 
         ssize_t send(char* buffer, size_t len);
-        ssize_t receive(char* buffer, size_t len, int timeout=0);
+        ssize_t receive(char* buffer, size_t len, int timeout=1);
 
         enum {
             connectionClosed = 0,
