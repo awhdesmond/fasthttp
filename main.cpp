@@ -15,12 +15,12 @@ class RootHandler : public RequestHandler {
 int main(int argc, char* argv[])
 {
     // Process command line arguments
-    if (argc < 3) {
+    if (argc < 2) {
         printf("usage: %s <port>\n", argv[0]);
         exit(-1);
     }
 
-    int port = atoi(argv[2]);
+    int port = atoi(argv[1]);
 
     HttpServer server = HttpServer(port);
     
