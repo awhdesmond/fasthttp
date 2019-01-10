@@ -50,6 +50,25 @@ int httpMakeResponse(HttpResponse* res)
     return 0;
 }
 
+int httpMakeMissingHostHeaderResponse(HttpResponse* res)
+{
+    res->statusCode = HTTP_STATUS_CODE_BAD_REQUEST;
+    res->statusMsg = std::string(HTTP_STATUS_MSG_BAD_REQUEST);
+    
+    res->headers.insert(std::make_pair("Server", "HTTP Server"));
+    res->headers.insert(std::make_pair("Content-Type", "text/html; charset=UTF-8"));
+    res->headers.insert(std::make_pair("Connection", "close"));
+
+    const char *body = 
+        "<html><body>"
+        "<h2>No Host: header received</h2>"
+        "HTTP 1.1 requests must include the Host: header."
+        "</body></html>";
+
+    res->body = std::string(body);
+    return 0;
+}
+
 std::string httpSerialiseResponse(HttpResponse* res, HttpRequest* req)
 {
     std::string result;

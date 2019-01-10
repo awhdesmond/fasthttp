@@ -32,13 +32,11 @@ class ConnectionThread : public Thread
 
                 HttpRequest req;
                 HttpResponse res;
-                char reqBuf[BUFFERSIZE];
-                char tempbuf[BUFFERSIZE];
+                char reqBuf[BUFFERSIZE], tempbuf[BUFFERSIZE];
                 memset(tempbuf, 0, BUFFERSIZE);
                 memset(reqBuf, 0, BUFFERSIZE);
                 
-                int prevLen = 0;
-                int done = 0;
+                int prevLen = 0, done = 0;
                 // We must read whatever data is available
                 // completely, as we are running in edge-triggered mode
                 // and won't get a notification again for the same data.
@@ -62,6 +60,8 @@ class ConnectionThread : public Thread
                     }
 
                     int pr = httpParseRequest(reqBuf, BUFFERSIZE, &req);                    
+                    
+                    // May have multiple HTTP Requests in a single TCP packet
                     memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
                     memset(reqBuf, 0, BUFFERSIZE);
                     memcpy(reqBuf, tempbuf, BUFFERSIZE - pr);
@@ -69,11 +69,14 @@ class ConnectionThread : public Thread
                     prevLen = strlen(reqBuf);      
 
                     httpMakeResponse(&res);
-                    routeRequest(&req, &res); 
+                    if (!checkRequestForHostHeader(&req)) { // check for host header
+                        httpMakeMissingHostHeaderResponse(&res);
+                    } else {
+                        routeRequest(&req, &res); 
+                    }
 
                     // std::string resStr = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nDate: Wed, 09 Jan 2019 14:27:31 GMT\r\nServer: WebServer\r\nContent-Length: 200\r\n\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; 
                     std::string resStr = httpSerialiseResponse(&res, &req);
-                    // printf("%s\n", resStr.c_str())
                     
                     if ((write ((eptr + i)->data.fd, resStr.c_str(), resStr.length())) == -1) {
                         perror("write()");
@@ -92,32 +95,34 @@ class ConnectionThread : public Thread
     }
 
     private:
+    bool checkRequestForHostHeader(HttpRequest* req)
+    {
+        if (req->version == 1) { // HTTP/1.1
+            return req->headers.find("Host") != req->headers.end();
+        }
+        return true;
+    }
+
     int routeRequest(HttpRequest* req, HttpResponse* res)
     {
         RequestHandler* handler;
         std::tuple<HttpMethod, std::string> handlerKey;
         if (req->method.compare("GET") == 0 || req->method.compare("HEAD") == 0) {
             handlerKey = std::make_tuple(GET, req->path);
-            if(_handlers->find(handlerKey) != _handlers->end()) {
-                handler = (*_handlers)[handlerKey];
-                (*handler)(req, res);
-                return 0;
-            } else {
-                return -2; // handler not found
-            }
         }
         else if (req->method.compare("POST") == 0){
-            handlerKey = std::make_tuple(POST, req->path);
-            if(_handlers->find(handlerKey) != _handlers->end()) {
-                handler = (*_handlers)[handlerKey];
-                (*handler)(req, res);
-                return 0;
-            } else {
-                return -2;
-            } 
+            handlerKey = std::make_tuple(POST, req->path); 
         }
         else {
             return -1; // method not supported
+        }
+
+        if(_handlers->find(handlerKey) != _handlers->end()) {
+            handler = (*_handlers)[handlerKey];
+            (*handler)(req, res);
+            return 0;
+        } else {
+            return -2; // handler not found
         }
     }
 };
