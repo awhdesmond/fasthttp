@@ -19,12 +19,10 @@ class ConnectionThread : public Thread
     void* run() {
         printf("Connection thread is up and running\n");
         
-        while (1) { // Event loop
-            
+        while (1) { // Event loop    
             int n = _epollq->wait();
             struct epoll_event* eptr = _epollq->getEventsPtr();
         
-
             int i;
             for (i = 0; i < n; i++) {
                 if (((eptr + i)->events & EPOLLERR) || ((eptr + i)->events & EPOLLHUP) || !((eptr + i)->events & EPOLLIN)) {
