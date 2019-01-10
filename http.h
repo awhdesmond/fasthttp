@@ -87,6 +87,8 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req);
 int httpMakeResponse(HttpResponse* res);
 int httpMakeContinueResponse(HttpResponse* res);
 int httpMakeBadRequestResponse(HttpResponse* res);
+int httpMakeBadMethodResponse(HttpResponse* res);
+int httpMakeNotFoundResponse(HttpResponse* res);
 int httpMakeMissingHostHeaderResponse(HttpResponse* res);
 std::string httpSerialiseResponse(HttpResponse* res, HttpRequest* req);
 

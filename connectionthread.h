@@ -71,12 +71,18 @@ class ConnectionThread : public Thread
                         prevLen = strlen(reqbuf);      
 
                         httpMakeResponse(&res);
+                        
                         if (!checkRequestForHostHeader(&req)) { // check for host header
                             httpMakeMissingHostHeaderResponse(&res);
                         } else {
-                            routeRequest(&req, &res); 
+                            int r = routeRequest(&req, &res); 
+                            if (r == -1) {
+                                httpMakeBadMethodResponse(&res);
+                            }
+                            else if (r == -2) {
+                                httpMakeNotFoundResponse(&res);
+                            }
                         }
-
                         if (req.headers["Connection"].compare("close") == 0) {
                             done = 1; // Client request for close connection
                         }

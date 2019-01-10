@@ -45,18 +45,40 @@ int httpMakeResponse(HttpResponse* res)
     return 0;
 }
 
+int httpMakeBadMethodResponse(HttpResponse* res)
+{
+    res->statusCode = HTTP_STATUS_CODE_NOT_IMPLEMENTED;
+    res->statusMsg = std::string(HTTP_STATUS_MSG_NOT_IMPLEMENTED);
+    return 0;
+}
+
 int httpMakeBadRequestResponse(HttpResponse* res)
 {
     res->statusCode = HTTP_STATUS_CODE_BAD_REQUEST;
     res->statusMsg = std::string(HTTP_STATUS_MSG_BAD_REQUEST);
     
     res->headers.insert(std::make_pair("Content-Type", "text/html; charset=UTF-8"));
-    res->headers.insert(std::make_pair("Connection", "close"));
 
     const char *body = 
         "<html><body>"
         "<h2>400 Bad Request</h2>"
         "A request that this server could not understand was sent."
+        "</body></html>";
+
+    res->body = std::string(body);
+    return 0;
+}
+
+int httpMakeNotFoundResponse(HttpResponse* res)
+{
+    res->statusCode = HTTP_STATUS_CODE_NOT_FOUND;
+    res->statusMsg = std::string(HTTP_STATUS_MSG_NOT_FOUND);
+    
+    res->headers.insert(std::make_pair("Content-Type", "text/html; charset=UTF-8"));
+
+    const char *body = 
+        "<html><body>"
+        "<h2>404 Not Found</h2>"
         "</body></html>";
 
     res->body = std::string(body);
@@ -103,8 +125,10 @@ std::string httpSerialiseResponse(HttpResponse* res, HttpRequest* req)
         it++;
     }
 
-    result = result + "Content-Length: " + std::to_string(res->body.length()) + HTTP_DELIMETER;
-    result = result + HTTP_DELIMETER;
+    if (res->body.length() > 0) {
+        result = result + "Content-Length: " + std::to_string(res->body.length()) + HTTP_DELIMETER;
+        result = result + HTTP_DELIMETER;
+    }
     
     if (req->method.compare("HEAD") != 0) {
         result = result + res->body;
