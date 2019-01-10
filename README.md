@@ -32,7 +32,7 @@ The `main.cpp` file contains an example program that make use of the __fasthttp_
 
 ### Benchmarking
 On the Vagrant VM 4GB/4CPU (MacOS host (8GB/1CPU(2 Cores))): 
-![VM Benchmark](assets/vm_benchmark.png)  
+![VM Benchmark](assets/local_vm_benchmark.png)  
 
 On DigitalOcean's Standard 8GB/4CPU(4 Cores) droplet running Ubuntu 16.04:
 This is similar configuration to a normal modern personal laptop.
