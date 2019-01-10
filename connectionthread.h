@@ -72,7 +72,7 @@ class ConnectionThread : public Thread
                     routeRequest(&req, &res); 
 
                     // std::string resStr = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nDate: Wed, 09 Jan 2019 14:27:31 GMT\r\nServer: WebServer\r\nContent-Length: 200\r\n\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; 
-                    std::string resStr = httpSerialiseResponse(&res);
+                    std::string resStr = httpSerialiseResponse(&res, &req);
                     // printf("%s\n", resStr.c_str())
                     
                     if ((write ((eptr + i)->data.fd, resStr.c_str(), resStr.length())) == -1) {
@@ -95,9 +95,11 @@ class ConnectionThread : public Thread
     int routeRequest(HttpRequest* req, HttpResponse* res)
     {
         RequestHandler* handler;
-        if (req->method.compare("GET") == 0) {
-            if(_handlers->find(std::make_tuple(GET, req->path)) != _handlers->end()) {
-                handler = (*_handlers)[std::make_tuple(GET, req->path)];
+        std::tuple<HttpMethod, std::string> handlerKey;
+        if (req->method.compare("GET") == 0 || req->method.compare("HEAD") == 0) {
+            handlerKey = std::make_tuple(GET, req->path);
+            if(_handlers->find(handlerKey) != _handlers->end()) {
+                handler = (*_handlers)[handlerKey];
                 (*handler)(req, res);
                 return 0;
             } else {
@@ -105,14 +107,16 @@ class ConnectionThread : public Thread
             }
         }
         else if (req->method.compare("POST") == 0){
-            if(_handlers->find(std::make_tuple(POST, req->path)) != _handlers->end()) {
-                handler = (*_handlers)[std::make_tuple(POST, req->path)];
+            handlerKey = std::make_tuple(POST, req->path);
+            if(_handlers->find(handlerKey) != _handlers->end()) {
+                handler = (*_handlers)[handlerKey];
                 (*handler)(req, res);
                 return 0;
             } else {
                 return -2;
             } 
-        } else {
+        }
+        else {
             return -1; // method not supported
         }
     }

@@ -50,7 +50,7 @@ int httpMakeResponse(HttpResponse* res)
     return 0;
 }
 
-std::string httpSerialiseResponse(HttpResponse* res)
+std::string httpSerialiseResponse(HttpResponse* res, HttpRequest* req)
 {
     std::string result;
     result = "HTTP/1.1 " + std::to_string(res->statusCode) + " " + res->statusMsg + HTTP_DELIMETER; // status line
@@ -63,8 +63,10 @@ std::string httpSerialiseResponse(HttpResponse* res)
 
     result = result + "Content-Length: " + std::to_string(res->body.length()) + HTTP_DELIMETER;
     result = result + HTTP_DELIMETER;
-    result = result + res->body;
-
+    
+    if (req->method.compare("HEAD") != 0) {
+        result = result + res->body;
+    }
     return result;
 }
 
