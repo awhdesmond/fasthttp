@@ -12,7 +12,6 @@ class ConnectionThread : public Thread
 {
     EpollQueue* _epollq;
     map<tuple<HttpMethod, string>, RequestHandler*>* _handlers;
-    map<int, string> _partialRequests;
 
     public:
     ConnectionThread(EpollQueue* epollq, map<tuple<HttpMethod, string>, RequestHandler*>* handlers) : _epollq(epollq), _handlers(handlers) {}
@@ -35,9 +34,9 @@ class ConnectionThread : public Thread
 
                 HttpRequest req;
                 HttpResponse res;
-                char reqBuf[BUFFERSIZE], tempbuf[BUFFERSIZE];
+                char reqbuf[BUFFERSIZE], tempbuf[BUFFERSIZE];
                 memset(tempbuf, 0, BUFFERSIZE);
-                memset(reqBuf, 0, BUFFERSIZE);
+                memset(reqbuf, 0, BUFFERSIZE);
                 
                 int prevLen = 0, done = 0;
                 // We must read whatever data is available
@@ -45,7 +44,7 @@ class ConnectionThread : public Thread
                 // and won't get a notification again for the same data.
                 while (1) {
                     ssize_t bytesRead;
-                    bytesRead = read(conn, reqBuf + prevLen, BUFFERSIZE - prevLen);
+                    bytesRead = read(conn, reqbuf + prevLen, BUFFERSIZE - prevLen);
 
                     if (bytesRead == -1) {
                         // If errno == EAGAIN, that means we have read all
@@ -62,14 +61,14 @@ class ConnectionThread : public Thread
                         break;
                     }
 
-                    int pr = httpParseRequest(reqBuf, BUFFERSIZE, &req);
+                    int pr = httpParseRequest(reqbuf, BUFFERSIZE, &req);
                     if (pr > 0) { // request read
                         // May have multiple HTTP Requests in a single TCP packet
-                        memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
-                        memset(reqBuf, 0, BUFFERSIZE);
-                        memcpy(reqBuf, tempbuf, BUFFERSIZE - pr);
+                        memcpy(tempbuf, reqbuf + pr, BUFFERSIZE - pr);
+                        memset(reqbuf, 0, BUFFERSIZE);
+                        memcpy(reqbuf, tempbuf, BUFFERSIZE - pr);
 
-                        prevLen = strlen(reqBuf);      
+                        prevLen = strlen(reqbuf);      
 
                         httpMakeResponse(&res);
                         if (!checkRequestForHostHeader(&req)) { // check for host header
@@ -77,9 +76,12 @@ class ConnectionThread : public Thread
                         } else {
                             routeRequest(&req, &res); 
                         }
+
+                        if (req.headers["Connection"].compare("close") == 0) {
+                            done = 1; // Client request for close connection
+                        }
                     } 
                     else if (pr == -2) { // partial valid request;
-                        // _partialRequests.insert(conn)
                         httpMakeContinueResponse(&res);
                     } else { // error; send 400 Bad Request
                         httpMakeBadRequestResponse(&res);
@@ -90,7 +92,7 @@ class ConnectionThread : public Thread
                     
                     if ((write (conn, resStr.c_str(), resStr.length())) == -1) {
                         perror("write()");
-                    }
+                    }                    
                 }
                 if (done) {
                     printf ("Closed connection on descriptor %d\n", conn);
