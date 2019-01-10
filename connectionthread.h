@@ -12,6 +12,7 @@ class ConnectionThread : public Thread
 {
     EpollQueue* _epollq;
     map<tuple<HttpMethod, string>, RequestHandler*>* _handlers;
+    map<int, string> _partialRequests;
 
     public:
     ConnectionThread(EpollQueue* epollq, map<tuple<HttpMethod, string>, RequestHandler*>* handlers) : _epollq(epollq), _handlers(handlers) {}
@@ -21,12 +22,14 @@ class ConnectionThread : public Thread
         
         while (1) { // Event loop    
             int n = _epollq->wait();
-            struct epoll_event* eptr = _epollq->getEventsPtr();
+            struct epoll_event* eqptr = _epollq->getEventsPtr();
         
             int i;
             for (i = 0; i < n; i++) {
-                if (((eptr + i)->events & EPOLLERR) || ((eptr + i)->events & EPOLLHUP) || !((eptr + i)->events & EPOLLIN)) {
-                    close((eptr + i)->data.fd);
+                struct epoll_event *eptr = (eqptr + i);
+                int conn = eptr->data.fd;
+                if ((eptr->events & EPOLLERR) || (eptr->events & EPOLLHUP) || !(eptr->events & EPOLLIN)) {
+                    close(conn);
                     continue;
                 } 
 
@@ -42,7 +45,7 @@ class ConnectionThread : public Thread
                 // and won't get a notification again for the same data.
                 while (1) {
                     ssize_t bytesRead;
-                    bytesRead = read((eptr + i)->data.fd, reqBuf + prevLen, BUFFERSIZE - prevLen);
+                    bytesRead = read(conn, reqBuf + prevLen, BUFFERSIZE - prevLen);
 
                     if (bytesRead == -1) {
                         // If errno == EAGAIN, that means we have read all
@@ -59,34 +62,41 @@ class ConnectionThread : public Thread
                         break;
                     }
 
-                    int pr = httpParseRequest(reqBuf, BUFFERSIZE, &req);                    
-                    
-                    // May have multiple HTTP Requests in a single TCP packet
-                    memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
-                    memset(reqBuf, 0, BUFFERSIZE);
-                    memcpy(reqBuf, tempbuf, BUFFERSIZE - pr);
+                    int pr = httpParseRequest(reqBuf, BUFFERSIZE, &req);
+                    if (pr > 0) { // request read
+                        // May have multiple HTTP Requests in a single TCP packet
+                        memcpy(tempbuf, reqBuf + pr, BUFFERSIZE - pr);
+                        memset(reqBuf, 0, BUFFERSIZE);
+                        memcpy(reqBuf, tempbuf, BUFFERSIZE - pr);
 
-                    prevLen = strlen(reqBuf);      
+                        prevLen = strlen(reqBuf);      
 
-                    httpMakeResponse(&res);
-                    if (!checkRequestForHostHeader(&req)) { // check for host header
-                        httpMakeMissingHostHeaderResponse(&res);
-                    } else {
-                        routeRequest(&req, &res); 
+                        httpMakeResponse(&res);
+                        if (!checkRequestForHostHeader(&req)) { // check for host header
+                            httpMakeMissingHostHeaderResponse(&res);
+                        } else {
+                            routeRequest(&req, &res); 
+                        }
+                    } 
+                    else if (pr == -2) { // partial valid request;
+                        // _partialRequests.insert(conn)
+                        httpMakeContinueResponse(&res);
+                    } else { // error; send 400 Bad Request
+                        httpMakeBadRequestResponse(&res);
                     }
 
                     // std::string resStr = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nDate: Wed, 09 Jan 2019 14:27:31 GMT\r\nServer: WebServer\r\nContent-Length: 200\r\n\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; 
                     std::string resStr = httpSerialiseResponse(&res, &req);
                     
-                    if ((write ((eptr + i)->data.fd, resStr.c_str(), resStr.length())) == -1) {
+                    if ((write (conn, resStr.c_str(), resStr.length())) == -1) {
                         perror("write()");
                     }
                 }
                 if (done) {
-                    printf ("Closed connection on descriptor %d\n", (eptr + i)->data.fd);
+                    printf ("Closed connection on descriptor %d\n", conn);
                     // Closing the descriptor will make epoll remove it
                     // from the set of descriptors which are monitored.
-                    _epollq->remove((eptr + i)->data.fd);
+                    _epollq->remove(conn);
                 }
             }
         }

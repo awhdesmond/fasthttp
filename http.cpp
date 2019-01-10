@@ -42,11 +42,24 @@ int httpMakeResponse(HttpResponse* res)
     strftime (timebuf, 128, "%a, %d %b %Y %H:%M:%S GMT", info);
     res->headers.insert(std::make_pair("Date", std::string(timebuf)));
 
-    // res->headers.insert(std::make_pair("Content-Type", "text/html; charset=UTF-8"));
-    // res->headers.insert(std::make_pair("Connection", "Keep-Alive"));
-    // res->headers.insert(std::make_pair("Keep-Alive", "timeout=3, max=120"));
-    // res->headers.insert(std::make_pair("Last-Modified", "Tue, 08 Jan 2019 14:41:03 GMT"));
+    return 0;
+}
 
+int httpMakeBadRequestResponse(HttpResponse* res)
+{
+    res->statusCode = HTTP_STATUS_CODE_BAD_REQUEST;
+    res->statusMsg = std::string(HTTP_STATUS_MSG_BAD_REQUEST);
+    
+    res->headers.insert(std::make_pair("Content-Type", "text/html; charset=UTF-8"));
+    res->headers.insert(std::make_pair("Connection", "close"));
+
+    const char *body = 
+        "<html><body>"
+        "<h2>400 Bad Request</h2>"
+        "A request that this server could not understand was sent."
+        "</body></html>";
+
+    res->body = std::string(body);
     return 0;
 }
 
@@ -55,7 +68,6 @@ int httpMakeMissingHostHeaderResponse(HttpResponse* res)
     res->statusCode = HTTP_STATUS_CODE_BAD_REQUEST;
     res->statusMsg = std::string(HTTP_STATUS_MSG_BAD_REQUEST);
     
-    res->headers.insert(std::make_pair("Server", "HTTP Server"));
     res->headers.insert(std::make_pair("Content-Type", "text/html; charset=UTF-8"));
     res->headers.insert(std::make_pair("Connection", "close"));
 
@@ -69,10 +81,21 @@ int httpMakeMissingHostHeaderResponse(HttpResponse* res)
     return 0;
 }
 
+int httpMakeContinueResponse(HttpResponse* res)
+{
+    res->statusCode = HTTP_STATUS_CODE_CONTINUE;
+    res->statusMsg = std::string(HTTP_STATUS_MSG_CONTINUE);
+    return 0;
+}
+
 std::string httpSerialiseResponse(HttpResponse* res, HttpRequest* req)
 {
     std::string result;
     result = "HTTP/1.1 " + std::to_string(res->statusCode) + " " + res->statusMsg + HTTP_DELIMETER; // status line
+
+    if (res->statusCode == HTTP_STATUS_CODE_CONTINUE) {
+        return result;
+    }
 
     std::map<std::string, std::string>::iterator it = res->headers.begin();
     while(it != res->headers.end()) {

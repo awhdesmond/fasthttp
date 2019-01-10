@@ -85,6 +85,8 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req);
 
 // Generate a default http response
 int httpMakeResponse(HttpResponse* res);
+int httpMakeContinueResponse(HttpResponse* res);
+int httpMakeBadRequestResponse(HttpResponse* res);
 int httpMakeMissingHostHeaderResponse(HttpResponse* res);
 std::string httpSerialiseResponse(HttpResponse* res, HttpRequest* req);
 
