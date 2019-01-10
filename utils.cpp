@@ -1,3 +1,5 @@
+#include "utils.h"
+#include <string.h>
 #include <fstream>
 
 int readFileIntoString(std::string filename, std::string* contents)
@@ -13,6 +15,17 @@ int readFileIntoString(std::string filename, std::string* contents)
         return 0;
     } 
     return -1;
+}
+
+int readFileStat(std::string filename, struct stat* statp)
+{
+    struct stat attr;
+    int r = stat(filename.c_str(), &attr);
+    if (r == -1) {
+        return r;
+    }
+    memcpy(statp, &attr, sizeof(attr));
+    return 0;
 }
 
 std::string extractFileExtension(std::string* filename)

@@ -70,7 +70,7 @@ class ConnectionThread : public Thread
 
                         prevLen = strlen(reqbuf);      
 
-                        httpMakeResponse(&res);
+                        httpMakeResponse(&req, &res);
                         
                         if (!checkRequestForHostHeader(&req)) { // check for host header
                             httpMakeMissingHostHeaderResponse(&res);
@@ -94,7 +94,7 @@ class ConnectionThread : public Thread
                     }
 
                     // std::string resStr = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nDate: Wed, 09 Jan 2019 14:27:31 GMT\r\nServer: WebServer\r\nContent-Length: 200\r\n\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; 
-                    std::string resStr = httpSerialiseResponse(&res, &req);
+                    std::string resStr = httpSerialiseResponse(&res);
                     
                     if ((write (conn, resStr.c_str(), resStr.length())) == -1) {
                         perror("write()");

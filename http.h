@@ -1,7 +1,9 @@
 #pragma once
 
+#include <time.h>
 #include <string>
 #include <map>
+#include "time.h"
 #include "filemanager.h"
 #include "utils.h"
 
@@ -19,12 +21,18 @@
 #define HTTP_STATUS_CODE_FORBIDDEN 403
 #define HTTP_STATUS_MSG_NOT_FOUND "Not Found"
 #define HTTP_STATUS_CODE_NOT_FOUND 404
+#define HTTP_STATUS_MSG_PRECONDITION_FAILED "Preconditioned Failed"
+#define HTTP_STATUS_CODE_PRECONDITION_FAILED 412
 #define HTTP_STATUS_MSG_ISE "Internal Server Error"
 #define HTTP_STATUS_CODE_ISE 500
 #define HTTP_STATUS_MSG_NOT_IMPLEMENTED "Not Implemented"
 #define HTTP_STATUS_CODE_NOT_IMPLEMENTED 501
 #define HTTP_STATUS_MSG_SERVICE_UNAVALIABLE "Service Unavailable"
 #define HTTP_STATUS_CODE_SERVICE_UNAVALIABLE 503
+
+#define HTTP_HEADER_CONTENT_LENGTH "Content-Length"
+#define HTTP_HEADER_CONTENT_TYPE "Content-Type"
+#define HTTP_HEADER_IF_MODIFIED_SINCE "If-Modified-Since"
 
 #define HTTP_DELIMETER "\r\n"
 
@@ -47,16 +55,44 @@ struct HttpRequest
 
 struct HttpResponse
 {
+    HttpRequest* req;
+
     int statusCode;
     std::string statusMsg;
     int version; // minor version
     std::map<std::string, std::string> headers;
     std::string body;
 
-    // 1. load file contents into response body
-    // 2. check file ext to specify content-type
     // Returns file size, i.e. num bytes read
-    int sendFile(std::string relativePathname) { 
+    int sendFile(std::string relativePathname) {
+        
+        // Checks for CONDITIONAL GET
+        if (req->headers.find(HTTP_HEADER_IF_MODIFIED_SINCE) != req->headers.end()) {
+            std::string dateString = req->headers[HTTP_HEADER_IF_MODIFIED_SINCE];
+            
+            struct stat fileStat;
+            time_t headerTime;
+            struct tm tmheader = {};
+            
+            char *end;
+            if ((end = strptime(dateString.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tmheader)) == NULL) { 
+                if ((end = strptime(dateString.c_str(), "%A, %d-%b-%y %H:%M:%S GMT", &tmheader)) == NULL) {
+                    end = strptime(dateString.c_str(), "%A, %d-%b-%y %H:%M:%S GMT", &tmheader);
+                }
+            }
+            
+            if (end != NULL) { // OK
+                headerTime = mktime(&tmheader);
+                readFileStat(relativePathname, &fileStat);
+                if (difftime(headerTime, fileStat.st_mtime) > 0) {
+                    statusCode = HTTP_STATUS_CODE_NOT_MODIFIED;
+                    statusMsg = HTTP_STATUS_MSG_NOT_MODIFIED;
+                    return fileStat.st_size;    
+                }
+            }
+            // else just ignore
+        }
+
         int r;
         if ((r = fm.readFile(relativePathname, &body)) < 0) {
             return r;
@@ -65,15 +101,15 @@ struct HttpResponse
         std::string fileExt = extractFileExtension(&relativePathname);
 
         if (fileExt.compare(CONTENT_TYPE_JSON) == 0) {
-            headers.insert(std::make_pair("Content-Type", "application/json"));
+            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "application/json"));
         } else if (fileExt.compare(CONTENT_TYPE_CSV) == 0) {
-            headers.insert(std::make_pair("Content-Type", "text/csv"));
+            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/csv"));
         } else if ((fileExt.compare(CONTENT_TYPE_HTML) == 0)) {
-            headers.insert(std::make_pair("Content-Type", "text/html"));
+            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/html"));
         } else if ((fileExt.compare(CONTENT_TYPE_XML) == 0)) {
-            headers.insert(std::make_pair("Content-Type", "text/xml"));
+            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/xml"));
         } else {
-            headers.insert(std::make_pair("Content-Type", "text/plain"));
+            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/plain"));
         }
 
         return body.length();
@@ -84,13 +120,13 @@ struct HttpResponse
 int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req);
 
 // Generate a default http response
-int httpMakeResponse(HttpResponse* res);
+int httpMakeResponse(HttpRequest* req, HttpResponse* res);
 int httpMakeContinueResponse(HttpResponse* res);
 int httpMakeBadRequestResponse(HttpResponse* res);
 int httpMakeBadMethodResponse(HttpResponse* res);
 int httpMakeNotFoundResponse(HttpResponse* res);
 int httpMakeMissingHostHeaderResponse(HttpResponse* res);
-std::string httpSerialiseResponse(HttpResponse* res, HttpRequest* req);
+std::string httpSerialiseResponse(HttpResponse* res);
 
 void httpPrintRequest(HttpRequest* req);
 void httpPrintResponse(HttpResponse* res);

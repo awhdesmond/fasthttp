@@ -27,8 +27,9 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req)
     return pr; // positive is num bytes used, -1 is error, -2 is incomplete
 }
 
-int httpMakeResponse(HttpResponse* res)
+int httpMakeResponse(HttpRequest* req, HttpResponse* res)
 {
+    res->req = req;
     res->statusCode = HTTP_STATUS_CODE_OK;
     res->statusMsg = std::string(HTTP_STATUS_MSG_OK);
     res->version = 1;
@@ -57,7 +58,7 @@ int httpMakeBadRequestResponse(HttpResponse* res)
     res->statusCode = HTTP_STATUS_CODE_BAD_REQUEST;
     res->statusMsg = std::string(HTTP_STATUS_MSG_BAD_REQUEST);
     
-    res->headers.insert(std::make_pair("Content-Type", "text/html; charset=UTF-8"));
+    res->headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/html; charset=UTF-8"));
 
     const char *body = 
         "<html><body>"
@@ -74,7 +75,7 @@ int httpMakeNotFoundResponse(HttpResponse* res)
     res->statusCode = HTTP_STATUS_CODE_NOT_FOUND;
     res->statusMsg = std::string(HTTP_STATUS_MSG_NOT_FOUND);
     
-    res->headers.insert(std::make_pair("Content-Type", "text/html; charset=UTF-8"));
+    res->headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/html; charset=UTF-8"));
 
     const char *body = 
         "<html><body>"
@@ -90,7 +91,7 @@ int httpMakeMissingHostHeaderResponse(HttpResponse* res)
     res->statusCode = HTTP_STATUS_CODE_BAD_REQUEST;
     res->statusMsg = std::string(HTTP_STATUS_MSG_BAD_REQUEST);
     
-    res->headers.insert(std::make_pair("Content-Type", "text/html; charset=UTF-8"));
+    res->headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/html; charset=UTF-8"));
     res->headers.insert(std::make_pair("Connection", "close"));
 
     const char *body = 
@@ -110,7 +111,7 @@ int httpMakeContinueResponse(HttpResponse* res)
     return 0;
 }
 
-std::string httpSerialiseResponse(HttpResponse* res, HttpRequest* req)
+std::string httpSerialiseResponse(HttpResponse* res)
 {
     std::string result;
     result = "HTTP/1.1 " + std::to_string(res->statusCode) + " " + res->statusMsg + HTTP_DELIMETER; // status line
@@ -126,11 +127,11 @@ std::string httpSerialiseResponse(HttpResponse* res, HttpRequest* req)
     }
 
     if (res->body.length() > 0) {
-        result = result + "Content-Length: " + std::to_string(res->body.length()) + HTTP_DELIMETER;
+        result = result + HTTP_HEADER_CONTENT_LENGTH + ": " + std::to_string(res->body.length()) + HTTP_DELIMETER;
         result = result + HTTP_DELIMETER;
     }
     
-    if (req->method.compare("HEAD") != 0) {
+    if (res->req->method.compare("HEAD") != 0) {
         result = result + res->body;
     }
     return result;
