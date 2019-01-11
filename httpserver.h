@@ -4,7 +4,6 @@
 #include <map>
 #include <tuple>
 #include "http.h"
-#include "tcpstream.h"
 #include "thread.h"
 
 #define BUFFERSIZE 1024

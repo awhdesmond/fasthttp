@@ -61,6 +61,7 @@ class ConnectionThread : public Thread
                         break;
                     }
 
+                    //printf("%s \n", reqbuf);
                     int pr = httpParseRequest(reqbuf, BUFFERSIZE, &req);
                     if (pr > 0) { // request read
                         // May have multiple HTTP Requests in a single TCP packet

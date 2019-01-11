@@ -4,12 +4,13 @@ fasthttp is a __multithreaded__, __async I/O__ HTTP server written in C++ for Li
 #### Features
 * Multithreaded, asynchronous request handling.
 * HTTP persistent connection and pipelining (for HTTP/1.1).
-* Specify server configuration in a .yml file [TODO]
 * Supports HTTP HEAD, GET methodes.
+* Supports HTTP POST (but application developer need to include external HTTP request body parser)
 * Supports Chunked-Transfer [TODO]
 * Supports Conditional GETs (If-Modified-Since)
 * C++ Functors callback programming pattern.
 * In-memory file manager with cache to speed up reads of the same file.
+* Specify server configuration in a .yml file
 
 ### Getting Started
 The repository contains a `Vagrantfile` that provisions an `Ubuntu 14.04` VM to help with setting up of the dev environment. In order to utilise the `Vagrantfile`, make sure Vagrant is installed on the local machine. Vagrant also requires a VM provider - a common option is VirtualBox- to be installed. 
@@ -21,6 +22,8 @@ make
 ./main 8080
 ```
 
+Open your web browser and visit localhost:8080.
+
 The `main.cpp` file contains an example program that make use of the __fasthttp__ HTTP server.
 
 > On the Vagrant VM, there may be a need to increase the number of file descriptors available if more threads are specified to be ran. The value I used was 1200000 to support 3 threads.
@@ -30,6 +33,10 @@ The `main.cpp` file contains an example program that make use of the __fasthttp_
 > `/sbin/sysctl -p`.
 
 ### Benchmarking
+In order to run the benchmarking test, `vagrant ssh` into the vagrant VM and then run `wrk -c10000 -t5 -d10s http://localhost:8080`.
+
+__Results__
+
 On the Vagrant VM 4GB/4CPU (MacOS host (8GB/1CPU(2 Cores))): 
 ![VM Benchmark](assets/local_vm_benchmark.png)  
 

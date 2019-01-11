@@ -2,9 +2,9 @@
 #include <ctime> 
 #include <iostream>
 #include "http.h"
-#include "./vendor/picohttpparser.h"
+#include "./vendor/picohttpparser/picohttpparser.h"
 
-int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req)
+int httpParseRequest(char* reqbuf, size_t buflen, HttpRequest* req)
 {
     const char *method, *path;
     int minor_version;
@@ -12,7 +12,7 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req)
     size_t method_len, path_len, num_headers;
     num_headers = sizeof(headers) / sizeof(headers[0]);
 
-    int pr = phr_parse_request(reqBuf, buflen, &method, &method_len, &path, &path_len,
+    int pr = phr_parse_request(reqbuf, buflen, &method, &method_len, &path, &path_len,
                                &minor_version, headers, &num_headers, 0);
 
     if (pr > 0) { // successfully parsed the request 
@@ -22,6 +22,11 @@ int httpParseRequest(char* reqBuf, size_t buflen, HttpRequest* req)
         size_t i;
         for (i = 0; i != num_headers; ++i) {
             req->headers.insert(std::make_pair(std::string(headers[i].name, headers[i].name_len), std::string(headers[i].value, headers[i].value_len)));   
+        }
+
+        if (req->method.compare("POST") == 0) {
+            req->body = std::string(reqbuf + pr);
+            printf("%s \n", req->body.c_str());
         }
     }
     return pr; // positive is num bytes used, -1 is error, -2 is incomplete
@@ -41,7 +46,7 @@ int httpMakeResponse(HttpRequest* req, HttpResponse* res)
     info = gmtime(&rawtime); // get GMT time
     char timebuf[128];
     strftime (timebuf, 128, "%a, %d %b %Y %H:%M:%S GMT", info);
-    res->headers.insert(std::make_pair("Date", std::string(timebuf)));
+    res->headers.insert(std::make_pair(HTTP_HEADER_DATE, std::string(timebuf)));
 
     return 0;
 }
@@ -92,7 +97,7 @@ int httpMakeMissingHostHeaderResponse(HttpResponse* res)
     res->statusMsg = std::string(HTTP_STATUS_MSG_BAD_REQUEST);
     
     res->headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/html; charset=UTF-8"));
-    res->headers.insert(std::make_pair("Connection", "close"));
+    res->headers.insert(std::make_pair(HTTP_HEADER_CONNECTION, "close"));
 
     const char *body = 
         "<html><body>"

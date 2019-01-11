@@ -5,8 +5,8 @@
 #include <string.h>
 #include <fcntl.h>
 #include "httpserver.h"
-#include "tcpstream.h"
 #include "connectionthread.h"
+#include "vendor/yaml-cpp/yaml-cpp/yaml.h"
 #include "epollqueue.h"
 
 HttpServer::HttpServer(int port) : _listenSocket(0), _port(port), _listening(false) {}
@@ -22,7 +22,10 @@ int HttpServer::start()
         return 0;
     }
 
-    EpollQueue* epollqList[NUM_WORKERS];
+    YAML::Node config = YAML::LoadFile(".fasthttp.conf.yaml");
+    int numThreads = config["threads"].as<int>();
+
+    EpollQueue* epollqList[numThreads];
 
     for (int i = 0; i < NUM_WORKERS; i++) {
         EpollQueue *epollq = new EpollQueue();

@@ -3,11 +3,10 @@
 #include <sys/stat.h>
 #include <string>
 
-#define CONTENT_TYPE_JSON "json"
-#define CONTENT_TYPE_XML "xml"
-#define CONTENT_TYPE_HTML "html"
-#define CONTENT_TYPE_PLAIN "plain"
-#define CONTENT_TYPE_CSV "csv"
+#define FILE_EXT_JSON "json"
+#define FILE_EXT_XML "xml"
+#define FILE_EXT_HTML "html"
+#define FILE_EXT_CSV "csv"
 
 int readFileStat(std::string filename, struct stat* mtime);
 int readFileIntoString(std::string filename, std::string* contents);

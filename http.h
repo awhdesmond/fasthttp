@@ -30,9 +30,19 @@
 #define HTTP_STATUS_MSG_SERVICE_UNAVALIABLE "Service Unavailable"
 #define HTTP_STATUS_CODE_SERVICE_UNAVALIABLE 503
 
+#define HTTP_HEADER_DATE "Date"
+#define HTTP_HEADER_CONNECTION "Connection"
 #define HTTP_HEADER_CONTENT_LENGTH "Content-Length"
 #define HTTP_HEADER_CONTENT_TYPE "Content-Type"
 #define HTTP_HEADER_IF_MODIFIED_SINCE "If-Modified-Since"
+
+#define CONTENT_TYPE_FORM "application/x-www-form-urlencoded"
+#define CONTENT_TYPE_JSON "application/json"
+#define CONTENT_TYPE_XML "application/xml"
+#define CONTENT_TYPE_PLAIN "text/plain"
+#define CONTENT_TYPE_CSV "text/csv"
+#define CONTENT_TYPE_HTML "text/html"
+
 
 #define HTTP_DELIMETER "\r\n"
 
@@ -67,6 +77,36 @@ struct HttpResponse
     int sendFile(std::string relativePathname) {
         
         // Checks for CONDITIONAL GET
+        int fileSize;
+        if ((fileSize = _checkForConditionalGet(relativePathname)) >= 0) {
+            statusCode = HTTP_STATUS_CODE_NOT_MODIFIED;
+            statusMsg = HTTP_STATUS_MSG_NOT_MODIFIED;
+            return fileSize; 
+        }
+        
+        int r;
+        if ((r = fm.readFile(relativePathname, &body)) < 0) {
+            return r;
+        }
+
+        std::string fileExt = extractFileExtension(&relativePathname);
+
+        if (fileExt.compare(FILE_EXT_JSON) == 0) {
+            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON));
+        } else if (fileExt.compare(FILE_EXT_CSV) == 0) {
+            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, CONTENT_TYPE_CSV));
+        } else if ((fileExt.compare(FILE_EXT_HTML) == 0)) {
+            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, CONTENT_TYPE_HTML));
+        } else if ((fileExt.compare(FILE_EXT_XML) == 0)) {
+            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, CONTENT_TYPE_XML));
+        } else {
+            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, CONTENT_TYPE_PLAIN));
+        }
+
+        return body.length();
+    }
+
+    int _checkForConditionalGet(std::string filename) {
         if (req->headers.find(HTTP_HEADER_IF_MODIFIED_SINCE) != req->headers.end()) {
             std::string dateString = req->headers[HTTP_HEADER_IF_MODIFIED_SINCE];
             
@@ -83,36 +123,13 @@ struct HttpResponse
             
             if (end != NULL) { // OK
                 headerTime = mktime(&tmheader);
-                readFileStat(relativePathname, &fileStat);
+                readFileStat(filename, &fileStat);
                 if (difftime(headerTime, fileStat.st_mtime) > 0) {
-                    statusCode = HTTP_STATUS_CODE_NOT_MODIFIED;
-                    statusMsg = HTTP_STATUS_MSG_NOT_MODIFIED;
-                    return fileStat.st_size;    
+                    return fileStat.st_size; 
                 }
             }
-            // else just ignore
         }
-
-        int r;
-        if ((r = fm.readFile(relativePathname, &body)) < 0) {
-            return r;
-        }
-
-        std::string fileExt = extractFileExtension(&relativePathname);
-
-        if (fileExt.compare(CONTENT_TYPE_JSON) == 0) {
-            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "application/json"));
-        } else if (fileExt.compare(CONTENT_TYPE_CSV) == 0) {
-            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/csv"));
-        } else if ((fileExt.compare(CONTENT_TYPE_HTML) == 0)) {
-            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/html"));
-        } else if ((fileExt.compare(CONTENT_TYPE_XML) == 0)) {
-            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/xml"));
-        } else {
-            headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, "text/plain"));
-        }
-
-        return body.length();
+        return -1;
     }
 };
 
@@ -126,6 +143,7 @@ int httpMakeBadRequestResponse(HttpResponse* res);
 int httpMakeBadMethodResponse(HttpResponse* res);
 int httpMakeNotFoundResponse(HttpResponse* res);
 int httpMakeMissingHostHeaderResponse(HttpResponse* res);
+
 std::string httpSerialiseResponse(HttpResponse* res);
 
 void httpPrintRequest(HttpRequest* req);
