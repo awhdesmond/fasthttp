@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include "httpserver.h"
 #include "connectionthread.h"
-#include "vendor/yaml-cpp/yaml-cpp/yaml.h"
+#include "vendor/yaml-cpp/yaml.h"
 #include "epollqueue.h"
 
 HttpServer::HttpServer(int port) : _listenSocket(0), _port(port), _listening(false) {}
