@@ -27,7 +27,7 @@ int HttpServer::start()
 
     EpollQueue* epollqList[numThreads];
 
-    for (int i = 0; i < NUM_WORKERS; i++) {
+    for (int i = 0; i < numThreads; i++) {
         EpollQueue *epollq = new EpollQueue();
         epollqList[i] = epollq;
         ConnectionThread* thread = new ConnectionThread(epollq, &_handlers);
@@ -41,7 +41,7 @@ int HttpServer::start()
     HttpServer::initServerSocket();
     while (1) {
         int conn = acceptConnection();
-        int randThreadIdx = rand() % NUM_WORKERS;
+        int randThreadIdx = rand() % numThreads;
         epollqList[randThreadIdx]->add(conn);
     }
 }
