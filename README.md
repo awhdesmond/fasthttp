@@ -10,10 +10,12 @@ fasthttp is a __multithreaded__, __async I/O__ HTTP server written in C++ for Li
 * Supports Conditional GETs (If-Modified-Since)
 * C++ Functors callback programming pattern.
 * In-memory file manager with cache to speed up reads of the same file.
-* Specify server configuration in a .yml file
+* Specify server configuration in a .yaml file
 
 ### Getting Started
 The repository contains a `Vagrantfile` that provisions an `Ubuntu 14.04` VM to help with setting up of the dev environment. In order to utilise the `Vagrantfile`, make sure Vagrant is installed on the local machine. Vagrant also requires a VM provider - a common option is VirtualBox- to be installed. 
+
+The `main.cpp` file contains an example program that make use of the __fasthttp__ HTTP server.
 
 ```sh
 git clone https://github.com/awhdesmond/fasthttp.git
@@ -24,7 +26,7 @@ make
 
 Open your web browser and visit localhost:8080.
 
-The `main.cpp` file contains an example program that make use of the __fasthttp__ HTTP server.
+* By default fasthttp reads in `fasthttp.conf.yml` to determine the number of threads to run. Change the value in the config file to change the number of threads.
 
 > On the Vagrant VM, there may be a need to increase the number of file descriptors available if more threads are specified to be ran. The value I used was 1200000 to support 3 threads.
 > 1. Edit the following line in the `/etc/sysctl.conf` file:
