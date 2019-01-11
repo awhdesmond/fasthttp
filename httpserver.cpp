@@ -23,11 +23,11 @@ int HttpServer::start()
     }
 
     YAML::Node config = YAML::LoadFile(".fasthttp.conf.yaml");
-    int numThreads = config["threads"].as<int>();
+    int nthreads = config["threads"].as<int>();
 
-    EpollQueue* epollqList[numThreads];
+    EpollQueue* epollqList[nthreads];
 
-    for (int i = 0; i < numThreads; i++) {
+    for (int i = 0; i < nthreads; i++) {
         EpollQueue *epollq = new EpollQueue();
         epollqList[i] = epollq;
         ConnectionThread* thread = new ConnectionThread(epollq, &_handlers);
@@ -41,7 +41,7 @@ int HttpServer::start()
     HttpServer::initServerSocket();
     while (1) {
         int conn = acceptConnection();
-        int randThreadIdx = rand() % numThreads;
+        int randThreadIdx = rand() % nthreads;
         epollqList[randThreadIdx]->add(conn);
     }
 }
