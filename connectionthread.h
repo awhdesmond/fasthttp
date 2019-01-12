@@ -12,6 +12,7 @@ class ConnectionThread : public Thread
 {
     EpollQueue* _epollq;
     map<tuple<HttpMethod, string>, RequestHandler*>* _handlers;
+    map<int, string> _partialRequests;
 
     public:
     ConnectionThread(EpollQueue* epollq, map<tuple<HttpMethod, string>, RequestHandler*>* handlers) : _epollq(epollq), _handlers(handlers) {}
@@ -37,8 +38,17 @@ class ConnectionThread : public Thread
                 char reqbuf[BUFFERSIZE], tempbuf[BUFFERSIZE];
                 memset(tempbuf, 0, BUFFERSIZE);
                 memset(reqbuf, 0, BUFFERSIZE);
-                
+
                 int prevLen = 0, done = 0;
+                
+                // copy partial requests to buffer before accepting new reads
+                map<int, string>::iterator iter = _partialRequests.find(conn) ;
+                if (iter != _partialRequests.end()) {
+                    memcpy(reqbuf, _partialRequests[conn].c_str(), _partialRequests[conn].length());
+                    prevLen = _partialRequests[conn].length();
+                    _partialRequests.erase(iter);
+                }
+
                 // We must read whatever data is available
                 // completely, as we are running in edge-triggered mode
                 // and won't get a notification again for the same data.
@@ -61,7 +71,7 @@ class ConnectionThread : public Thread
                         break;
                     }
 
-                    //printf("%s \n", reqbuf);
+                    
                     int pr = httpParseRequest(reqbuf, BUFFERSIZE, &req);
                     if (pr > 0) { // request read
                         // May have multiple HTTP Requests in a single TCP packet
@@ -89,12 +99,12 @@ class ConnectionThread : public Thread
                         }
                     } 
                     else if (pr == -2) { // partial valid request;
+                        _partialRequests.insert(make_pair(conn, string(reqbuf)));
                         httpMakeContinueResponse(&res);
                     } else { // error; send 400 Bad Request
                         httpMakeBadRequestResponse(&res);
                     }
-
-                    // std::string resStr = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nDate: Wed, 09 Jan 2019 14:27:31 GMT\r\nServer: WebServer\r\nContent-Length: 200\r\n\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; 
+                    
                     std::string resStr = httpSerialiseResponse(&res);
                     
                     if ((write (conn, resStr.c_str(), resStr.length())) == -1) {
