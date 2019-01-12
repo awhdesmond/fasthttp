@@ -52,18 +52,18 @@ __fasthttp__ uses UNIX/Linux networking system APIs to enable its __multithreadi
 
 ![Architecture Diagram](assets/archi.png)
 
-__HttpServer__ is the class that encapsulates all the inner-workings of __fasthttp__ and provides a clean API for creating server applications. Here are its functionalities:
+`HttpServer` is the class that encapsulates all the inner-workings of __fasthttp__ and provides a clean API for creating server applications. Here are its functionalities:
 * On server start up, it initialises the server configuration from the configuration file.
 * Creates the necessary number of connection threads to handle incoming HTTP connections
 * Creates and binds the server listening socket.
 
-__ConnectionThread__ is a wrapper class for the underlying POSIX Thread. It contains a reference to an EpollQueue object that is used for asynchronous I/O. Most of the HTTP handling logic resides here. These include parsing of the HTTP request, forming of the HTTP response and routing of the request to the correct handler registered by the user etc..
+`ConnectionThread` is a wrapper class for the underlying POSIX Thread. It contains a reference to an EpollQueue object that is used for asynchronous I/O. Most of the HTTP handling logic resides here. These include parsing of the HTTP request, forming of the HTTP response and routing of the request to the correct handler registered by the user etc..
 
 > With regards to HTTP parsing, [picohttpparser](https://github.com/h2o/picohttpparser) is used.
 
-__EpollQueue__ is a wrapper class for Linux's epoll async I/O mechanism. Each connection thread has its own instance of EpollQueue. It also coordinates the inter-thread communication between the main server thread and the connection threads using mutexs. Whenever the main server thread (that is the one with the server listening socket) receives a new incoming connection, it will uniformly distribute the socket descriptor to any of the connection thread for processing. 
+`EpollQueue` is a wrapper class for Linux's epoll async I/O mechanism. Each connection thread has its own instance of EpollQueue. It also coordinates the inter-thread communication between the main server thread and the connection threads using mutexs. Whenever the main server thread (that is the one with the server listening socket) receives a new incoming connection, it will uniformly distribute the socket descriptor to any of the connection thread for processing. 
 
-__FileManager__ is a basic in-memory cache that caches file reads avoid repetitive file I/O and speed up future requests.
+`FileManager` is a basic in-memory cache that caches file reads avoid repetitive file I/O and speed up future requests.
 
 ### References
 __HTTP__
