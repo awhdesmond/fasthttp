@@ -5,8 +5,7 @@ fasthttp is a __multithreaded__, __async I/O__ HTTP server written in C++ for Li
 * Multithreaded, asynchronous request handling.
 * HTTP persistent connection and pipelining (for HTTP/1.1).
 * Supports HTTP HEAD, GET methodes.
-* Supports HTTP POST (but application developer need to include external HTTP request body parser)
-* Supports Chunked-Transfer [TODO]
+* Supports HTTP POST (application developer need to include external HTTP request body parser)
 * Supports Conditional GETs (If-Modified-Since)
 * C++ Functors callback programming pattern.
 * In-memory file manager with cache to speed up reads of the same file.
@@ -65,7 +64,6 @@ __ConnectionThread__ is a wrapper class for the underlying POSIX Thread. It cont
 __EpollQueue__ is a wrapper class for Linux's epoll async I/O mechanism. Each connection thread has its own instance of EpollQueue. It also coordinates the inter-thread communication between the main server thread and the connection threads using mutexs. Whenever the main server thread (that is the one with the server listening socket) receives a new incoming connection, it will uniformly distribute the socket descriptor to any of the connection thread for processing. 
 
 __FileManager__ is a basic in-memory cache that caches file reads avoid repetitive file I/O and speed up future requests.
-
 
 ### References
 __HTTP__
