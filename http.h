@@ -73,6 +73,18 @@ struct HttpResponse
     std::map<std::string, std::string> headers;
     std::string body;
 
+    int sendPlainText(std::string plainText) {
+        headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, CONTENT_TYPE_PLAIN));
+        body = plainText;
+        return 0;
+    }
+
+    int sendJSON(std::string json) {
+        headers.insert(std::make_pair(HTTP_HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON));
+        body = json;
+        return 0;
+    }
+
     // Returns file size, i.e. num bytes read
     int sendFile(std::string relativePathname) {
         
@@ -106,6 +118,7 @@ struct HttpResponse
         return body.length();
     }
 
+    private:
     int _checkForConditionalGet(std::string filename) {
         if (req->headers.find(HTTP_HEADER_IF_MODIFIED_SINCE) != req->headers.end()) {
             std::string dateString = req->headers[HTTP_HEADER_IF_MODIFIED_SINCE];

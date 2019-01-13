@@ -15,6 +15,7 @@ fasthttp is a __multithreaded__, __async I/O__ HTTP server written in C++ for Li
 The repository contains a `Vagrantfile` that provisions an `Ubuntu 14.04` VM to help with setting up of the dev environment. In order to utilise the `Vagrantfile`, make sure Vagrant is installed on the local machine. Vagrant also requires a VM provider - a common option is VirtualBox- to be installed. 
 
 The `main.cpp` file contains an example program that make use of the __fasthttp__ HTTP server.
+* The `HttpResponse` struct contains helper functions such as `sendFile`, `sendJSON` for handling responses for a different requests.
 
 ```sh
 git clone https://github.com/awhdesmond/fasthttp.git
